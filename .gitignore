@@ -1,0 +1,8 @@
+.vscode
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
+libs
+PaletteTest.exe
+Makefile
+PreLoad.cmake
