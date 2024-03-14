@@ -248,50 +248,73 @@ void MD_RenderSurfaceDeform(SDL_Surface* src, int xleft, int ytop, int* hdeform,
     Uint8* pixels = src->pixels;
     Uint8* fbpixels = framebuffer->pixels;
 
+    /* Find the intersection of the source surface and the framebuffer */
     int xstart = SDL_max(xleft, 0);
     int xend = SDL_min((xleft + src->w), framebuffer->w);
     int ystart = SDL_max(ytop, 0);
     int yend = SDL_min((ytop + src->h), framebuffer->h);
 
+    /* If the surface is offset above the framebuffer, skip that many rows. */
     if (ytop < 0)
         pixels += src->pitch * -ytop;
+    /* Set the initial framebuffer pointer to the top edge of the intersection. */
     fbpixels += framebuffer->pitch * ystart;
 
+    /* For each row in the intersection: */
     for (int i = ystart; i < yend; i++)
     {
+        /* Calculate the deformation amount for this row */
         int y = i - ytop;
         int deform = y < deformsize ? hdeform[y] : 0;
+
+        /* For each pixel in the intersection, copy it over if it's nonzero. */
         for (int j = xstart; j < xend; j++)
         {
             Uint8 pixel = pixels[MD_UtilsOffset(j - xleft, src->w, deform)];
             if (pixel)
                 fbpixels[j] = pixel;
         }
+        /* Advance to the next row in both source and framebuffer. */
         pixels += src->pitch;
         fbpixels += framebuffer->pitch;
     }
 }
 
+// TODO: comment the difference between this function and MD_RenderSurfaceDeform
 void MD_RenderSurfaceDeform2(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize)
 {
     Uint8* pixels = src->pixels;
     Uint8* fbpixels = framebuffer->pixels;
+    
+    // Offset destination pointer to the first row to write to
     fbpixels += framebuffer->pitch * ytop;
-
+    
+    // Iterate over each row of the source surface
     for (int y = 0; y < src->h; y++)
     {
+        // If the current row is outside the framebuffer,
+        // break out of the loop
         if (y + ytop >= framebuffer->h)
             break;
         
+        // Get the horizontal deformation amount for this row
         int deform = y < deformsize ? hdeform[y] : 0;
+        
+        // Iterate over each column of the current row
         for (int x = 0; x < src->w; x++)
         {
+            // Calculate the destination index in the framebuffer
             int dest = xleft + x + deform;
+            
             Uint8 pixel = pixels[x];
+            
+            // If the destination index is outside the framebuffer or
+            // the pixel is transparent (% MD_PALETTE_COLORS == 0),
+            // skip this pixel
             if (dest < 0 || dest >= framebuffer->w || pixel % MD_PALETTE_COLORS == 0)
                 continue;
-
-            fbpixels[dest] = pixels[x];
+            
+            fbpixels[dest] = pixel;
         }
         
         fbpixels += framebuffer->pitch;

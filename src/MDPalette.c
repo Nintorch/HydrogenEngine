@@ -153,7 +153,7 @@ static SDL_Color get_color_from_surface(SDL_Surface* surface, int x, int y)
     {
         pixel = *(Uint32*)((char*)surface->pixels + y * surface->pitch + x * surface->format->BytesPerPixel);
     }
-    else  if (surface->format->BytesPerPixel == 3)
+    else if (surface->format->BytesPerPixel == 3)
     {
         Uint8* p = (Uint8*)((char*)surface->pixels + y * surface->pitch + x * surface->format->BytesPerPixel);
         pixel = SDL_MapRGB(surface->format, p[0], p[1], p[2]);

@@ -37,19 +37,36 @@ struct MD_Object
     Uint8 userdata[MD_OBJECT_USERDATA_SIZE];
 };
 
+/*
+ * Reserved objects are always present in memory, and are used for objects
+ * that are usually loaded from the start of the level. These objects are not
+ * affected by the current screen position in the level.
+ *
+ * Dynamic objects, on the other hand, are only created if they are on
+ * screen in the level. These objects are destroyed when they are
+ * no longer on screen. This allows levels to be memory-efficient
+ * and only load objects that are actually needed.
+ */
+
+// TODO: now the only thing to do is to actually make levels and dynamic object loading
+
 MD_Object* MD_GetReservedObjects(void);
 MD_Object* MD_GetDynamicObjects(void);
 
 MD_Object* MD_InitializeReservedObject(MD_ObjectRoutine constructor);
 MD_Object* MD_InitializeDynamicObject(MD_ObjectRoutine constructor);
 
+// A convenience macro that references a label from an old Sonic 1 GitHub disassembly
 #define MD_SingleObjLoad MD_InitializeDynamicObject
 
 SDL_bool MD_ObjectExists(MD_Object* object);
 SDL_bool MD_IsObjectDynamic(MD_Object* object);
 void MD_DestroyObject(MD_Object* object);
 
+// Advances the object's position based on its speed values.
 void MD_SpeedToPos(MD_Object* object);
+// Applies a constant downward force to the object, causing it to fall
+// (it also calls MD_SpeedToPos internally).
 void MD_ObjectFall(MD_Object* object);
 
 #endif // __MDOBJECT_H__

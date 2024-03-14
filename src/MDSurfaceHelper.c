@@ -32,16 +32,50 @@ SDL_Surface* MD_ScaleSurface(SDL_Surface* surface, double zoomx, double zoomy)
 
     Uint8* pixels = MD_GetSurfacePixels(result);
     Uint8* ogpixels = MD_GetSurfacePixels(surface);
+    /*
+     * Scale the surface horizontally by zoomx,
+     * and scale the surface vertically by zoomy.
+     */
     for (int i = 0; i < result->h; i++)
     {
+        /*
+         * Loop through each row of the scaled surface.
+         */
         for (int j = 0; j < result->w; j++)
         {
+            /*
+             * Find the corresponding pixel in the original
+             * surface horizontally by dividing the current
+             * column number by the horizontal zoom factor.
+             *
+             * If the result is negative, add the width of
+             * the original surface to wrap around to the
+             * beginning of the row.
+             */
             int idx = (int)(j / zoomx);
             if (idx < 0) idx += surface->w;
+
+            /*
+             * Copy the pixel from the original surface to
+             * the current row of the scaled surface.
+             */
             pixels[j] = ogpixels[idx];
         }
+
+        /*
+         * Advance to the next row of the scaled surface.
+         */
         pixels += result->pitch;
 
+        /*
+         * Update the pointer to the current row of the
+         * original surface by dividing the current row
+         * number by the vertical zoom factor.
+         *
+         * If the result is negative, add the height of
+         * the original surface to wrap around to the
+         * beginning of the surface.
+         */
         int idx = (int)(i / zoomy);
         if (idx < 0) idx += surface->h;
         ogpixels = MD_GetSurfacePixels(surface) + surface->pitch * idx;
