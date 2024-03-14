@@ -49,7 +49,8 @@ void MD_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, doubl
 void MD_RenderSurfaceAngle(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double angle);
 void MD_RenderSurface(SDL_Surface* src, SDL_Rect* srcrect, int x, int y);
 
-void MD_RenderSurfaceDeform(SDL_Surface* src, int xleft, int ytop, int* hdeform);
+void MD_RenderSurfaceDeform(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize);
+void MD_RenderSurfaceDeform2(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize);
 
 typedef struct
 {

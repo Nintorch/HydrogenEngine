@@ -1,4 +1,5 @@
 #include "MD.h"
+#include "MDUtils.h"
 #include "SDL_image.h"
 
 #include <stdio.h>
@@ -242,16 +243,7 @@ void MD_RenderSurface(SDL_Surface* src, SDL_Rect* srcrect, int x, int y)
     MD_RenderSurfaceEx(src, srcrect, x, y, 1.0, 1.0, 0.0);
 }
 
-static int offset(int x, int size, int offset)
-{
-    x += offset;
-    x %= size;
-    if (x < 0)
-        x += size;
-    return x;
-}
-
-void MD_RenderSurfaceDeform(SDL_Surface* src, int xleft, int ytop, int* hdeform)
+void MD_RenderSurfaceDeform(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize)
 {
     Uint8* pixels = src->pixels;
     Uint8* fbpixels = framebuffer->pixels;
@@ -268,14 +260,42 @@ void MD_RenderSurfaceDeform(SDL_Surface* src, int xleft, int ytop, int* hdeform)
     for (int i = ystart; i < yend; i++)
     {
         int y = i - ytop;
+        int deform = y < deformsize ? hdeform[y] : 0;
         for (int j = xstart; j < xend; j++)
         {
-            Uint8 pixel = pixels[offset(j - xleft, src->w, hdeform[y])];
+            Uint8 pixel = pixels[MD_UtilsOffset(j - xleft, src->w, deform)];
             if (pixel)
                 fbpixels[j] = pixel;
         }
         pixels += src->pitch;
         fbpixels += framebuffer->pitch;
+    }
+}
+
+void MD_RenderSurfaceDeform2(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize)
+{
+    Uint8* pixels = src->pixels;
+    Uint8* fbpixels = framebuffer->pixels;
+    fbpixels += framebuffer->pitch * ytop;
+
+    for (int y = 0; y < src->h; y++)
+    {
+        if (y + ytop >= framebuffer->h)
+            break;
+        
+        int deform = y < deformsize ? hdeform[y] : 0;
+        for (int x = 0; x < src->w; x++)
+        {
+            int dest = xleft + x + deform;
+            Uint8 pixel = pixels[x];
+            if (dest < 0 || dest >= framebuffer->w || pixel % MD_PALETTE_COLORS == 0)
+                continue;
+
+            fbpixels[dest] = pixels[x];
+        }
+        
+        fbpixels += framebuffer->pitch;
+        pixels += src->pitch;
     }
 }
 

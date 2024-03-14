@@ -29,7 +29,7 @@ static void SonicMain(MD_Object* object)
 static void SonicConstructor(MD_Object* object)
 {
     object->routine = SonicMain;
-    object->spritesheet = MD_LoadSpritesheet(64, 64, "spritesheet.png", 0, 0);
+    object->spritesheet = MD_LoadSpritesheet(64, 64, "data/spritesheet.png", 0, 0);
     object->spritesheet_owner = SDL_TRUE;
     object->frame = 6;
 

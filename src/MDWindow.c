@@ -78,7 +78,7 @@ void MD_Update(void)
         }
 
         // Update
-        MD_ResetColorPalette();
+        MD_ResetCurrentColorPalette();
         GameUpdate();
 
         // Software rendering
