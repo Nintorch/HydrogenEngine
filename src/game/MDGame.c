@@ -26,11 +26,11 @@ void GameInit(void)
 {
     MD_SetHBlank(hblank);
     
-    MD_LoadMDPalette(NULL, 0, "data/SonicPal.bin");
-    MD_LoadPalette(NULL, 1, "data/ghzpal.png");
+    MD_LoadPalette(NULL, 0, 1, "data/sonicpal.png");
+    MD_LoadPalette(NULL, 1, 1, "data/ghzpal.png");
 
     underwater = MD_CreateColorPalette();
-    MD_LoadMDPalette(underwater, 0, "data/Sonic - LZ Underwater.bin");
+    MD_LoadMDPalette(underwater, 0, 1, "data/Sonic - LZ Underwater.bin");
     MD_CopyPalette(NULL, 1, underwater, 1);
 
     test = MD_LoadSurface("data/ghz.png", 1, 1);

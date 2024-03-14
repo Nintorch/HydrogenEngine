@@ -29,19 +29,21 @@ void MD_ClearPalette(SDL_Palette* pal, int palid);
 
 void MD_ConvertColor(Uint16 md_color, SDL_Color* out);
 
+// TODO: allow loading several palettes from a single file
+
 // Load a palette in Mega Drive format
-void MD_LoadMDPalette(SDL_Palette* pal, int palid, const char* filename);
+void MD_LoadMDPalette(SDL_Palette* pal, int palid, int npals, const char* filename);
 // Load a palette from an image file
-void MD_LoadPalette(SDL_Palette* pal, int palid, const char* filename);
+void MD_LoadPalette(SDL_Palette* pal, int palid, int npals, const char* filename);
 
-void MD_LoadMDPaletteRW(SDL_Palette* pal, int palid, SDL_RWops* rw, SDL_bool free_rwops);
-void MD_LoadPaletteSurface(SDL_Palette* pal, int palid, SDL_Surface* src, SDL_bool free_src);
+void MD_LoadMDPaletteRW(SDL_Palette* pal, int palid, int npals, SDL_RWops* rw, SDL_bool free_rwops);
+void MD_LoadPaletteSurface(SDL_Palette* pal, int palid, int npals, SDL_Surface* src, SDL_bool free_src);
 
-void MD_LoadMDPaletteEx(const char* filename, SDL_Color* out, int ncolors);
-void MD_LoadPaletteEx(const char* filename, SDL_Color* out, int ncolors);
+void MD_LoadMDPaletteEx(const char* filename, int pal, SDL_Color* out, int ncolors);
+void MD_LoadPaletteEx(const char* filename, int pal, SDL_Color* out, int ncolors);
 
-void MD_LoadMDPaletteExRW(SDL_RWops* rw, SDL_bool free_rwops, SDL_Color* out, int ncolors);
-void MD_LoadPaletteExSurface(SDL_Surface* src, SDL_bool free_src, SDL_Color* out, int ncolors);
+void MD_LoadMDPaletteExRW(SDL_RWops* rw, SDL_bool free_rwops, int pal, SDL_Color* out, int ncolors);
+void MD_LoadPaletteExSurface(SDL_Surface* src, SDL_bool free_src, int pal, SDL_Color* out, int ncolors);
 
 // Save a palette to an image file
 void MD_SavePalette(SDL_Palette* pal, int palid, const char* filename);

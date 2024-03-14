@@ -103,9 +103,11 @@ void MD_ConvertColor(Uint16 md_color, SDL_Color* out)
     out->a = 255;
 }
 
-void MD_LoadMDPaletteExRW(SDL_RWops* rw, SDL_bool free_rwops, SDL_Color* out, int ncolors)
+void MD_LoadMDPaletteExRW(SDL_RWops* rw, SDL_bool free_rwops, int pal, SDL_Color* out, int ncolors)
 {
     int n = SDL_min(ncolors, SDL_RWsize(rw) / 2);
+
+    SDL_RWseek(rw, pal * MD_PALETTE_COLORS * 2, RW_SEEK_CUR);
 
     for (int i = 0; i < n; i++)
     {
@@ -117,35 +119,43 @@ void MD_LoadMDPaletteExRW(SDL_RWops* rw, SDL_bool free_rwops, SDL_Color* out, in
         SDL_RWclose(rw);
 }
 
-void MD_LoadMDPaletteEx(const char* filename, SDL_Color* out, int ncolors)
+void MD_LoadMDPaletteEx(const char* filename, int pal, SDL_Color* out, int ncolors)
 {
-    MD_LoadMDPaletteExRW(SDL_RWFromFile(filename, "rb"), SDL_TRUE, out, ncolors);
+    MD_LoadMDPaletteExRW(SDL_RWFromFile(filename, "rb"), SDL_TRUE, pal, out, ncolors);
 }
 
-void MD_LoadMDPaletteRW(SDL_Palette* pal, int palid, SDL_RWops* rw, SDL_bool free_rwops)
-{
-    SDL_Color colors[MD_PALETTE_COLORS];
-    MD_LoadMDPaletteExRW(rw, free_rwops, colors, MD_PALETTE_COLORS);
-    MD_SetPaletteColors(pal, palid, colors, 0, MD_PALETTE_COLORS);
-}
-
-void MD_LoadMDPalette(SDL_Palette* pal, int palid, const char* filename)
+void MD_LoadMDPaletteRW(SDL_Palette* pal, int palid, int npals, SDL_RWops* rw, SDL_bool free_rwops)
 {
     SDL_Color colors[MD_PALETTE_COLORS];
-    MD_LoadMDPaletteEx(filename, colors, MD_PALETTE_COLORS);
-    MD_SetPaletteColors(pal, palid, colors, 0, MD_PALETTE_COLORS);
+    for (int i = 0; i < npals; i++)
+    {
+        MD_LoadMDPaletteExRW(rw, SDL_FALSE, i, colors, MD_PALETTE_COLORS);
+        MD_SetPaletteColors(pal, palid + i, colors, 0, MD_PALETTE_COLORS);
+    }
+    if (free_rwops)
+        SDL_RWclose(rw);
 }
 
-static SDL_Color get_color_from_surface(SDL_Surface* surface, int x)
+void MD_LoadMDPalette(SDL_Palette* pal, int palid, int npals, const char* filename)
+{
+    SDL_Color colors[MD_PALETTE_COLORS];
+    for (int i = 0; i < npals; i++)
+    {
+        MD_LoadMDPaletteEx(filename, i, colors, MD_PALETTE_COLORS);
+        MD_SetPaletteColors(pal, palid + i, colors, 0, MD_PALETTE_COLORS);
+    }
+}
+
+static SDL_Color get_color_from_surface(SDL_Surface* surface, int x, int y)
 {
     Uint32 pixel;
     if (surface->format->BytesPerPixel == 4)
     {
-        pixel = *(Uint32*)((char*)surface->pixels + x * surface->format->BytesPerPixel);
+        pixel = *(Uint32*)((char*)surface->pixels + y * surface->pitch + x * surface->format->BytesPerPixel);
     }
     else  if (surface->format->BytesPerPixel == 3)
     {
-        Uint8* p = (Uint8*)((char*)surface->pixels + x * surface->format->BytesPerPixel);
+        Uint8* p = (Uint8*)((char*)surface->pixels + y * surface->pitch + x * surface->format->BytesPerPixel);
         pixel = SDL_MapRGB(surface->format, p[0], p[1], p[2]);
     }
     SDL_Color color;
@@ -153,7 +163,7 @@ static SDL_Color get_color_from_surface(SDL_Surface* surface, int x)
     return color;
 }
 
-void MD_LoadPaletteExSurface(SDL_Surface* src, SDL_bool free_src, SDL_Color* out, int ncolors)
+void MD_LoadPaletteExSurface(SDL_Surface* src, SDL_bool free_src, int pal, SDL_Color* out, int ncolors)
 {
     if (src->format->BytesPerPixel < 3)
     {
@@ -164,13 +174,13 @@ void MD_LoadPaletteExSurface(SDL_Surface* src, SDL_bool free_src, SDL_Color* out
     int n = SDL_min(ncolors, src->w);
 
     for (int i = 0; i < n; i++)
-        out[i] = get_color_from_surface(src, i);
+        out[i] = get_color_from_surface(src, i, pal);
 
     if (free_src)
         SDL_FreeSurface(src);
 }
 
-void MD_LoadPaletteEx(const char* filename, SDL_Color* out, int ncolors)
+void MD_LoadPaletteEx(const char* filename, int pal, SDL_Color* out, int ncolors)
 {
     SDL_Surface* surface = IMG_Load(filename);
     if (surface == NULL)
@@ -178,17 +188,22 @@ void MD_LoadPaletteEx(const char* filename, SDL_Color* out, int ncolors)
         printf("MD_LoadPaletteEx: Unable to load image: %s\n", IMG_GetError());
         return;
     }
-    return MD_LoadPaletteExSurface(surface, SDL_TRUE, out, ncolors);
+    return MD_LoadPaletteExSurface(surface, SDL_TRUE, pal, out, ncolors);
 }
 
-void MD_LoadPaletteSurface(SDL_Palette* pal, int palid, SDL_Surface* src, SDL_bool free_src)
+void MD_LoadPaletteSurface(SDL_Palette* pal, int palid, int npals, SDL_Surface* src, SDL_bool free_src)
 {
     SDL_Color colors[MD_PALETTE_COLORS];
-    MD_LoadPaletteExSurface(src, free_src, colors, MD_PALETTE_COLORS);
-    MD_SetPaletteColors(pal, palid, colors, 0, MD_PALETTE_COLORS);
+    for (int i = 0; i < npals; i++)
+    {
+        MD_LoadPaletteExSurface(src, SDL_FALSE, i, colors, MD_PALETTE_COLORS);
+        MD_SetPaletteColors(pal, palid + i, colors, 0, MD_PALETTE_COLORS);
+    }
+    if (free_src)
+        SDL_FreeSurface(src);
 }
 
-void MD_LoadPalette(SDL_Palette* pal, int palid, const char* filename)
+void MD_LoadPalette(SDL_Palette* pal, int palid, int npals, const char* filename)
 {
     SDL_Surface* surface = IMG_Load(filename);
     
@@ -198,7 +213,7 @@ void MD_LoadPalette(SDL_Palette* pal, int palid, const char* filename)
         return;
     }
 
-    MD_LoadPaletteSurface(pal, palid, surface, SDL_TRUE);
+    MD_LoadPaletteSurface(pal, palid, npals, surface, SDL_TRUE);
 }
 
 void MD_SavePalette(SDL_Palette* pal, int palid, const char* filename)
@@ -212,7 +227,7 @@ void MD_SavePalette(SDL_Palette* pal, int palid, const char* filename)
         *(Uint32*)((char*)surface->pixels + i * surface->format->BytesPerPixel) = pixel;
     }
 
-    if (strcmp(filename + strlen(filename - 4), ".png") == 0)
+    if (!strcmp(filename + strlen(filename) - 4, ".png"))
         IMG_SavePNG(surface, filename);
     else
         SDL_SaveBMP(surface, filename);
