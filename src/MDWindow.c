@@ -12,7 +12,7 @@ SDL_Window* MD_GetWindow(void)
     return wnd;
 }
 
-void MD_UpdateFBZoom()
+void MD_UpdateFBZoom(void)
 {
     int w, h;
     SDL_GetWindowSize(wnd, &w, &h);
@@ -21,12 +21,12 @@ void MD_UpdateFBZoom()
     fb_zoom_factor = SDL_min(zoomx, zoomy);
 }
 
-float MD_GetFBZoom()
+float MD_GetFBZoom(void)
 {
     return fb_zoom_factor;
 }
 
-void MD_Close()
+void MD_Close(void)
 {
     running = SDL_FALSE;
 }
@@ -102,7 +102,7 @@ void MD_Quit(void)
 {
     GameQuit();
 
-    // MD_ObjectSystemQuit();
+    MD_ObjectSystemQuit();
     MD_RenderQuit();
     MD_PaletteQuit();
     MD_InputSystemQuit();

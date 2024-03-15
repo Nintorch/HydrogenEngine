@@ -131,6 +131,17 @@ SDL_Surface* MD_LoadSurface(const char* filename, int palid_start, int palid_end
     return MD_LoadSurfaceRW(SDL_RWFromFile(filename, "rb"), SDL_TRUE, palid_start, palid_end);
 }
 
+void MD_SaveSurface(SDL_Surface* surface, const char* filename)
+{
+    const char* filename_test = filename + strlen(filename) - 4;
+    if (strlen(filename) < 5)
+        return;
+    if (!strcmp(filename_test, ".png"))
+        IMG_SavePNG(surface, filename);
+    else if (!strcmp(filename_test, ".bmp"))
+        SDL_SaveBMP(surface, filename);
+}
+
 // Rendering
 
 void MD_PreTextureRender(void)
@@ -285,10 +296,10 @@ void MD_RenderSurfaceDeform2(SDL_Surface* src, int xleft, int ytop, int* hdeform
 {
     Uint8* pixels = src->pixels;
     Uint8* fbpixels = framebuffer->pixels;
-    
+
     // Offset destination pointer to the first row to write to
     fbpixels += framebuffer->pitch * ytop;
-    
+
     // Iterate over each row of the source surface
     for (int y = 0; y < src->h; y++)
     {
@@ -296,27 +307,27 @@ void MD_RenderSurfaceDeform2(SDL_Surface* src, int xleft, int ytop, int* hdeform
         // break out of the loop
         if (y + ytop >= framebuffer->h)
             break;
-        
+
         // Get the horizontal deformation amount for this row
         int deform = y < deformsize ? hdeform[y] : 0;
-        
+
         // Iterate over each column of the current row
         for (int x = 0; x < src->w; x++)
         {
             // Calculate the destination index in the framebuffer
             int dest = xleft + x + deform;
-            
+
             Uint8 pixel = pixels[x];
-            
+
             // If the destination index is outside the framebuffer or
             // the pixel is transparent (% MD_PALETTE_COLORS == 0),
             // skip this pixel
             if (dest < 0 || dest >= framebuffer->w || pixel % MD_PALETTE_COLORS == 0)
                 continue;
-            
+
             fbpixels[dest] = pixel;
         }
-        
+
         fbpixels += framebuffer->pitch;
         pixels += src->pitch;
     }
@@ -397,13 +408,7 @@ MD_Spritesheet* MD_LoadSpritesheet(int sprite_w, int sprite_h, const char* filen
 
 void MD_SaveSpritesheet(MD_Spritesheet* spritesheet, const char* filename)
 {
-    const char* filename_test = filename + strlen(filename) - 4;
-    if (strlen(filename) < 5)
-        return;
-    if (!strcmp(filename_test, ".png"))
-        IMG_SavePNG(spritesheet->surface, filename);
-    else if (!strcmp(filename_test, ".bmp"))
-        SDL_SaveBMP(spritesheet->surface, filename);
+    MD_SaveSurface(spritesheet->surface, filename);
 }
 
 SDL_Rect MD_GetSpriteRect(MD_Spritesheet* spritesheet, int sprite)

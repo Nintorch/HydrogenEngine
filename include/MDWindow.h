@@ -10,10 +10,10 @@
 
 SDL_Window* MD_GetWindow(void);
 
-void MD_UpdateFBZoom();
-float MD_GetFBZoom();
+void MD_UpdateFBZoom(void);
+float MD_GetFBZoom(void);
 
-void MD_Close();
+void MD_Close(void);
 
 void MD_Init(void);
 void MD_Update(void);

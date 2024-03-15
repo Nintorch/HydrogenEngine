@@ -25,17 +25,26 @@ int hdeform[240];
 void GameInit(void)
 {
     MD_SetHBlank(hblank);
-    
+
     MD_LoadPalette(NULL, 0, 1, "data/sonicpal.png");
     MD_LoadPalette(NULL, 1, 1, "data/ghzpal.png");
 
     underwater = MD_CreateColorPalette();
     MD_LoadMDPalette(underwater, 0, 1, "data/Sonic - LZ Underwater.bin");
-    MD_CopyPalette(NULL, 1, underwater, 1);
+
+    SDL_Color buffer[MD_PALETTE_COLORS];
+    MD_CopyPaletteOut(NULL, 1, buffer, MD_PALETTE_COLORS);
+    for (int i = 0; i < MD_PALETTE_COLORS; i++)
+    {
+        buffer[i].r /= 2;
+        buffer[i].g /= 2;
+        buffer[i].b /= 2;
+    }
+    MD_SetPaletteColors(underwater, 1, buffer, 0, MD_PALETTE_COLORS);
 
     test = MD_LoadSurface("data/ghz.png", 1, 1);
     sonic = CreateSonicObject();
-    
+
     for (int i = 0; i < 240; i++)
     {
         hdeform0[i] = round(sin(i * M_PI / 64) * 2);
@@ -65,5 +74,6 @@ void GameTextureRender(SDL_Surface* rgbframebuffer)
 
 void GameQuit(void)
 {
+    SDL_FreeSurface(test);
     SDL_FreePalette(underwater);
 }

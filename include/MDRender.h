@@ -31,6 +31,7 @@ void MD_ClearSurface(SDL_Surface* surface);
 SDL_Surface* MD_ConvertSurface(SDL_Surface* surface, int palid_start, int palid_end);
 SDL_Surface* MD_LoadSurfaceRW(SDL_RWops* rw, SDL_bool free_rwops, int palid_start, int palid_end);
 SDL_Surface* MD_LoadSurface(const char* filename, int palid_start, int palid_end);
+void MD_SaveSurface(SDL_Surface* surface, const char* filename);
 
 // Rendering
 
