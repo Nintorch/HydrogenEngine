@@ -208,7 +208,7 @@ void MD_RenderFBTextureToScreen()
     SDL_RenderCopy(hwrender, fb_texture, NULL, &rect);
 }
 
-#define RENDER_QUEUE_SIZE 128
+#define RENDER_QUEUE_SIZE 32
 
 typedef struct RenderQueue_Entry RenderQueue_Entry;
 typedef void (*RenderQueue_DrawLine)(uint32_t* pixels, int width, int y, void* data);
@@ -226,18 +226,19 @@ static int render_queue_pos = 0;
 
 static RenderQueue_Entry* MD_RenderQueueNextEntry(void)
 {
-    int offset = render_queue_pos++;
-    if (offset >= RENDER_QUEUE_SIZE)
+    if (render_queue_pos >= RENDER_QUEUE_SIZE)
     {
-        render_queue_pos = RENDER_QUEUE_SIZE;
-        return NULL;
+        MD_FlushRenderQueue();
+        printf("Overflow\n");
     }
+    int offset = render_queue_pos++;
     return render_queue + offset;
 }
 
 void MD_FlushRenderQueue(void)
 {
     uint32_t* pixels = (uint32_t*)target->pixels;
+    MD_SetColorPalette(NULL);
     for (int y = 0; y < MD_FB_HEIGHT; y++)
     {
         hblank(y);

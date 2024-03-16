@@ -31,12 +31,12 @@ SDL_Palette* MD_GetDefaultColorPalette(void)
 
 void MD_SetColorPalette(SDL_Palette* pal)
 {
-    palette = pal;
+    palette = pal == NULL ? default_palette : pal;
 }
 
 void MD_ResetCurrentColorPalette(void)
 {
-    MD_SetColorPalette(default_palette);
+    MD_SetColorPalette(NULL);
 }
 
 SDL_Palette* MD_CreateColorPalette(void)
