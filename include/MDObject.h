@@ -28,6 +28,7 @@ struct MD_Object
     float x, y;
     float xspeed, yspeed;
     int frame;
+    float opacity, angle, xscale, yscale;
 
     SDL_bool visible : 1,
         spritesheet_owner : 1,

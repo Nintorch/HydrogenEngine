@@ -219,7 +219,7 @@ static struct RenderQueue_Entry
     RenderQueue_DrawLine draw_line;
     RenderQueue_Destructor destructor;
     int start_line, end_line;
-    char data[32];
+    char data[64];
 } render_queue[RENDER_QUEUE_SIZE];
 
 static int render_queue_pos = 0;
@@ -304,6 +304,7 @@ struct DrawSpriteData
 {
     SDL_Surface* mdsurface;
     int x, y; // top-left coordinates
+    uint8_t opacity;
     SDL_bool surface_owner;
 };
 
@@ -351,12 +352,13 @@ static void draw_sprite_line(uint32_t* pixels, int width, int y, void* data)
 
     uint32_t* colors = (uint32_t*)MD_GetColorPalette()->colors;
     uint8_t* srcpixels = (uint8_t*)surface->pixels + y * surface->pitch;
+    float opacity_float = entry_data->opacity / 255.0f;
     for (int x = startx; x < endx; x++)
     {
         uint8_t srccolor = srcpixels[x - startx + offsetx];
         uint32_t color = colors[srccolor];
         if (srccolor)
-            pixels[x] = interpolate_color(pixels[x], color, 1.0f);
+            pixels[x] = interpolate_color(pixels[x], color, opacity_float);
     }
 }
 
@@ -367,7 +369,7 @@ static void draw_sprite_destructor(void* data)
         SDL_FreeSurface(entry_data->mdsurface);
 }
 
-void MD_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double zoomx, double zoomy, double angle)
+void MD_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double zoomx, double zoomy, double angle, double opacity)
 {
     RenderQueue_Entry* entry = MD_RenderQueueNextEntry();
     if (entry == NULL)
@@ -401,6 +403,8 @@ void MD_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, doubl
     data->x = rect.x;
     data->y = rect.y;
     data->surface_owner = surface_owner;
+    data->opacity = opacity > 1.0 ? 255 : opacity < 0.0 ? 0 : opacity * 255;
+
     entry->draw_line = draw_sprite_line;
     entry->destructor = draw_sprite_destructor;
     entry->start_line = rect.y;
@@ -409,12 +413,12 @@ void MD_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, doubl
 
 void MD_RenderSurfaceAngle(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double angle)
 {
-    MD_RenderSurfaceEx(src, srcrect, x, y, 1.0, 1.0, angle);
+    MD_RenderSurfaceEx(src, srcrect, x, y, 1.0, 1.0, angle, 1.0);
 }
 
 void MD_RenderSurface(SDL_Surface* src, SDL_Rect* srcrect, int x, int y)
 {
-    MD_RenderSurfaceEx(src, srcrect, x, y, 1.0, 1.0, 0.0);
+    MD_RenderSurfaceEx(src, srcrect, x, y, 1.0, 1.0, 0.0, 1.0);
 }
 
 struct DrawSDLSurfaceData
@@ -595,20 +599,20 @@ SDL_Rect MD_GetSpriteRect(MD_Spritesheet* spritesheet, int sprite)
     return out;
 }
 
-void MD_RenderSpritesheetEx(MD_Spritesheet* spritesheet, int sprite, int x, int y, double zoomx, double zoomy, double angle)
+void MD_RenderSpritesheetEx(MD_Spritesheet* spritesheet, int sprite, int x, int y, double zoomx, double zoomy, double angle, double opacity)
 {
     SDL_Rect rect = MD_GetSpriteRect(spritesheet, sprite);
-    MD_RenderSurfaceEx(spritesheet->surface, &rect, x, y, zoomx, zoomy, angle);
+    MD_RenderSurfaceEx(spritesheet->surface, &rect, x, y, zoomx, zoomy, angle, opacity);
 }
 
 void MD_RenderSpritesheetAngle(MD_Spritesheet* spritesheet, int sprite, int x, int y, double angle)
 {
-    MD_RenderSpritesheetEx(spritesheet, sprite, x, y, 1.0, 1.0, angle);
+    MD_RenderSpritesheetEx(spritesheet, sprite, x, y, 1.0, 1.0, angle, 1.0f);
 }
 
 void MD_RenderSpritesheet(MD_Spritesheet* spritesheet, int sprite, int x, int y)
 {
-    MD_RenderSpritesheetEx(spritesheet, sprite, x, y, 1.0, 1.0, 0.0);
+    MD_RenderSpritesheetEx(spritesheet, sprite, x, y, 1.0, 1.0, 0.0, 1.0f);
 }
 
 static void default_hblank(int y) {}

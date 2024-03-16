@@ -48,7 +48,7 @@ void MD_RenderFBTextureToScreen(void);
 void MD_FillSurface(int palid, int colorid);
 void MD_ClearSurface(void);
 
-void MD_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double zoomx, double zoomy, double angle);
+void MD_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double zoomx, double zoomy, double angle, double opacity);
 void MD_RenderSurfaceAngle(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double angle);
 void MD_RenderSurface(SDL_Surface* src, SDL_Rect* srcrect, int x, int y);
 
@@ -79,7 +79,7 @@ void MD_SaveSpritesheet(MD_Spritesheet* spritesheet, const char* filename);
 
 SDL_Rect MD_GetSpriteRect(MD_Spritesheet* spritesheet, int sprite);
 
-void MD_RenderSpritesheetEx(MD_Spritesheet* spritesheet, int sprite, int x, int y, double zoomx, double zoomy, double angle);
+void MD_RenderSpritesheetEx(MD_Spritesheet* spritesheet, int sprite, int x, int y, double zoomx, double zoomy, double angle, double opacity);
 void MD_RenderSpritesheetAngle(MD_Spritesheet* spritesheet, int sprite, int x, int y, double angle);
 void MD_RenderSpritesheet(MD_Spritesheet* spritesheet, int sprite, int x, int y);
 

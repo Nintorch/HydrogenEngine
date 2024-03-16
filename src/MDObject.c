@@ -8,9 +8,9 @@ static void render_object(MD_Object* object)
 {
     MD_RenderSpritesheetEx(object->spritesheet, object->frame,
         (int)object->x, (int)object->y,
-        object->xflip ? -1.0 : 1.0,
-        object->yflip ? -1.0 : 1.0,
-        0.0);
+        (object->xflip ? -1.0 : 1.0) * object->xscale,
+        (object->yflip ? -1.0 : 1.0) * object->yscale,
+        object->angle, object->opacity);
 }
 
 static void empty_routine(MD_Object* object) {}
@@ -19,6 +19,7 @@ static void setup_object(MD_Object* object)
 {
     memset(object, 0, sizeof(MD_Object));
     object->visible = SDL_TRUE;
+    object->xscale = object->yscale = object->opacity = 1.0f;
     object->render = render_object;
     object->routine = empty_routine;
     object->destructor = empty_routine;
