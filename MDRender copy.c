@@ -8,19 +8,16 @@ static SDL_Renderer* hwrender;
 static SDL_Surface* framebuffer;
 static SDL_Texture* fb_texture;
 
-static SDL_Surface* target;
-
 static MD_HInterrupt hblank;
 
 void MD_RenderInit(void)
 {
     hwrender = SDL_CreateRenderer(MD_GetWindow(), -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
-    target = framebuffer = SDL_CreateRGBSurfaceWithFormat(0, MD_FB_WIDTH, MD_FB_HEIGHT, 32, SDL_PIXELFORMAT_ABGR8888);
+    framebuffer = MD_CreateSurface(MD_FB_WIDTH, MD_FB_HEIGHT, MD_SURFACEFLAG_NONE);
     fb_texture = SDL_CreateTexture(hwrender,
         SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING,
         MD_FB_WIDTH, MD_FB_HEIGHT);
-    SDL_FillRect(framebuffer, NULL, SDL_MapRGB(framebuffer->format, 250, 0, 0));
 
     MD_ResetHBlank();
 }
@@ -50,6 +47,17 @@ SDL_Surface* MD_CreateSurface(int w, int h, int flags)
 Uint8* MD_GetSurfacePixels(SDL_Surface* surface)
 {
     return (Uint8*)surface->pixels;
+}
+
+void MD_FillSurface(SDL_Surface* surface, int palid, int colorid)
+{
+    Uint8 color = MD_MapColorInternal(palid, colorid);
+    memset(surface->pixels, color, surface->pitch * surface->h);
+}
+
+void MD_ClearSurface(SDL_Surface* surface)
+{
+    MD_FillSurface(surface, 0, 0);
 }
 
 static SDL_bool colors_equal(const SDL_Color* a, const SDL_Color* b)
@@ -138,7 +146,6 @@ void MD_SaveSurface(SDL_Surface* surface, const char* filename)
 
 void MD_PreTextureRender(void)
 {
-    MD_FlushRenderQueue();
     SDL_SetRenderDrawColor(hwrender, 0, 0, 0, 255);
     SDL_RenderClear(hwrender);
 }
@@ -167,30 +174,28 @@ void MD_UnlockFBTexture(void)
 
 void MD_RenderFBToSurface(SDL_Surface* surface)
 {
-    // if (surface->format->format != SDL_PIXELFORMAT_ABGR8888)
-    // {
-    //     // TODO
-    //     printf("MD_RenderFBToSurface: Invalid format\n");
-    //     return;
-    // }
+    if (surface->format->format != SDL_PIXELFORMAT_ABGR8888)
+    {
+        // TODO
+        printf("MD_RenderFBToSurface: Invalid format\n");
+        return;
+    }
 
-    // Uint32* pixels = surface->pixels;
-    // Uint8* fb_pixels = framebuffer->pixels;
-    // for (int i = 0; i < framebuffer->h; i++)
-    // {
-    //     hblank(i);
-    //     Uint32* colors = (Uint32*)MD_GetColorPalette()->colors;
-    //     for (int j = 0; j < framebuffer->w; j++)
-    //     {
-    //         Uint8 colorid = fb_pixels[j];
-    //         Uint32 color = colors[colorid];
-    //         pixels[j] = color;
-    //     }
-    //     pixels += surface->pitch / 4;
-    //     fb_pixels += framebuffer->pitch;
-    // }
-
-    SDL_BlitSurface(framebuffer, NULL, surface, NULL);
+    Uint32* pixels = surface->pixels;
+    Uint8* fb_pixels = framebuffer->pixels;
+    for (int i = 0; i < framebuffer->h; i++)
+    {
+        hblank(i);
+        Uint32* colors = (Uint32*)MD_GetColorPalette()->colors;
+        for (int j = 0; j < framebuffer->w; j++)
+        {
+            Uint8 colorid = fb_pixels[j];
+            Uint32 color = colors[colorid];
+            pixels[j] = color;
+        }
+        pixels += surface->pitch / 4;
+        fb_pixels += framebuffer->pitch;
+    }
 }
 
 void MD_RenderFBTextureToScreen()
@@ -208,202 +213,35 @@ void MD_RenderFBTextureToScreen()
     SDL_RenderCopy(hwrender, fb_texture, NULL, &rect);
 }
 
-#define RENDER_QUEUE_SIZE 128
-
-typedef struct RenderQueue_Entry RenderQueue_Entry;
-typedef void (*RenderQueue_DrawLine)(uint32_t* pixels, int width, int y, void* data);
-typedef void (*RenderQueue_Destructor)(void* data);
-
-static struct RenderQueue_Entry
-{
-    RenderQueue_DrawLine draw_line;
-    RenderQueue_Destructor destructor;
-    int start_line, end_line;
-    char data[32];
-} render_queue[RENDER_QUEUE_SIZE];
-
-static int render_queue_pos = 0;
-
-static RenderQueue_Entry* MD_RenderQueueNextEntry(void)
-{
-    int offset = render_queue_pos++;
-    if (offset >= RENDER_QUEUE_SIZE)
-    {
-        render_queue_pos = RENDER_QUEUE_SIZE;
-        return NULL;
-    }
-    return render_queue + offset;
-}
-
-void MD_FlushRenderQueue(void)
-{
-    uint32_t* pixels = (uint32_t*)target->pixels;
-    for (int y = 0; y < MD_FB_HEIGHT; y++)
-    {
-        hblank(y);
-        for (int i = 0; i < render_queue_pos; i++)
-        {
-            RenderQueue_Entry* entry = render_queue + i;
-            if (y < entry->start_line || y >= entry->end_line)
-                continue;
-            entry->draw_line(pixels, target->w, y - entry->start_line, entry->data);
-        }
-        pixels += target->pitch / 4;
-    }
-
-    for (int i = 0; i < render_queue_pos; i++)
-    {
-        RenderQueue_Entry* entry = render_queue + i;
-        entry->destructor(entry->data);
-    }
-    render_queue_pos = 0;
-}
-
-static void draw_empty_destructor(void* data) {}
-
-struct FillSurfaceData
-{
-    int colorid;
-};
-
-static void draw_fill_line(uint32_t* pixels, int width, int y, void* data)
-{
-    struct FillSurfaceData* entry_data = (struct FillSurfaceData*)data;
-    uint32_t color = *(uint32_t*)(MD_GetColorPalette()->colors + entry_data->colorid);
-    for (int i = 0; i < width; i++)
-        *pixels++ = color;
-}
-
-void MD_FillSurface(int palid, int colorid)
-{
-    RenderQueue_Entry* entry = MD_RenderQueueNextEntry();
-    if (entry == NULL)
-        return;
-
-    entry->draw_line = draw_fill_line;
-    entry->destructor = draw_empty_destructor;
-    entry->start_line = 0;
-    entry->end_line = target->h;
-
-    struct FillSurfaceData* data = (struct FillSurfaceData*)entry->data;
-    data->colorid = MD_MapColorInternal(palid, colorid);
-}
-
-void MD_ClearSurface(void)
-{
-    MD_FillSurface(0, 0);
-}
-
-#define GET_RED(a) (int)((a) & 0xff)
-#define GET_GREEN(a) (int)(((a) >> 8) & 0xff)
-#define GET_BLUE(a) (int)(((a) >> 16) & 0xff)
-#define GET_ALPHA(a) (int)(((a) >> 24) & 0xff)
-
-struct DrawSpriteData
-{
-    SDL_Surface* mdsurface;
-    int x, y; // top-left coordinates
-    SDL_bool surface_owner;
-};
-
-static uint32_t interpolate_color(uint32_t clra, uint32_t clrb, float t)
-{
-    int a = GET_ALPHA(clra) + t * (GET_ALPHA(clrb) - GET_ALPHA(clra));
-    t *= a / 255.f;
-    int r = GET_RED(clra) + t * (GET_RED(clrb) - GET_RED(clra));
-    int g = GET_GREEN(clra) + t * (GET_GREEN(clrb) - GET_GREEN(clra));
-    int b = GET_BLUE(clra) + t * (GET_BLUE(clrb) - GET_BLUE(clra));
-    return (a << 24) | (b << 16) | (g << 8) | r;
-}
-
-static SDL_bool get_line_bounds(int x, int srcwidth, int dstwidth, int* startx, int* endx, int* offset)
-{
-    if (x >= dstwidth || x + srcwidth < 0)
-        return SDL_FALSE;
-
-    if (x < 0)
-    {
-        *offset = -x;
-        *startx = 0;
-    }
-    else
-    {
-        *offset = 0;
-        *startx = x;
-    }
-    if (x + srcwidth > dstwidth)
-        *endx = dstwidth;
-    else
-        *endx = x + srcwidth;
-
-    return SDL_TRUE;
-}
-
-static void draw_sprite_line(uint32_t* pixels, int width, int y, void* data)
-{
-    struct DrawSpriteData* entry_data = (struct DrawSpriteData*)data;
-    SDL_Surface* surface = entry_data->mdsurface;
-
-    int startx, endx, offsetx;
-    if (!get_line_bounds(entry_data->x, surface->w, width, &startx, &endx, &offsetx))
-        return;
-
-    uint32_t* colors = (uint32_t*)MD_GetColorPalette()->colors;
-    uint8_t* srcpixels = (uint8_t*)surface->pixels + y * surface->pitch;
-    for (int x = startx; x < endx; x++)
-    {
-        uint8_t srccolor = srcpixels[x - startx + offsetx];
-        uint32_t color = colors[srccolor];
-        if (srccolor)
-            pixels[x] = interpolate_color(pixels[x], color, 1.0f);
-    }
-}
-
-static void draw_sprite_destructor(void* data)
-{
-    struct DrawSpriteData* entry_data = (struct DrawSpriteData*)data;
-    if (entry_data->surface_owner)
-        SDL_FreeSurface(entry_data->mdsurface);
-}
-
 void MD_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double zoomx, double zoomy, double angle)
 {
-    RenderQueue_Entry* entry = MD_RenderQueueNextEntry();
-    if (entry == NULL)
-        return;
-
     int flags = MD_GetSurfaceFlags(src);
-    SDL_Surface* surface_to_free = NULL;
-    SDL_bool surface_owner = SDL_FALSE;
-
     SDL_Surface* surface = src;
     if (srcrect)
-    {
         surface = MD_ClipSurface(src, srcrect);
-        surface_to_free = surface;
-        surface_owner = SDL_TRUE;
-    }
 
-    if (MD_NeedScaleRotate(zoomx, zoomy, angle))
+    SDL_bool need_scalerotate = MD_NeedScaleRotate(zoomx, zoomy, angle);
+    SDL_Surface* rotozoom = surface;
+    if (need_scalerotate)
     {
-        surface = MD_ScaleRotateSurface(surface, zoomx, zoomy, angle);
-        setup_surface(surface, flags);
-        SDL_FreeSurface(surface_to_free);
-        surface_owner = SDL_TRUE;
+        rotozoom = MD_ScaleRotateSurface(surface, zoomx, zoomy, angle);
+        setup_surface(rotozoom, flags);
     }
 
-    SDL_Rect rect = { x - surface->w / 2, y - surface->h / 2, surface->w, surface->h };
-    // SDL_BlitSurface(surface, NULL, framebuffer, &rect);
+    // If a clipped surface was created and if we don't need it
+    // in case it was scaled/rotated, free it
+    // (don't free it if it wasn't rotated, we will draw it below)
+    if (srcrect && need_scalerotate) SDL_FreeSurface(surface);
 
-    struct DrawSpriteData* data = (struct DrawSpriteData*)entry->data;
-    data->mdsurface = surface;
-    data->x = rect.x;
-    data->y = rect.y;
-    data->surface_owner = surface_owner;
-    entry->draw_line = draw_sprite_line;
-    entry->destructor = draw_sprite_destructor;
-    entry->start_line = rect.y;
-    entry->end_line = rect.y + rect.h;
+    SDL_Rect rect = { x - rotozoom->w / 2, y - rotozoom->h / 2, rotozoom->w, rotozoom->h };
+    SDL_BlitSurface(rotozoom, NULL, framebuffer, &rect);
+
+    // If the clipped surface was scaled/rotated, flip the modified surface
+    // (the clipped surface was freed above)
+    // If the clipped surface wasn't scaled/rotated, free the clipped surface
+    // that we don't free above (rotozoom == surface)
+    if (srcrect || need_scalerotate)
+        SDL_FreeSurface(rotozoom);
 }
 
 void MD_RenderSurfaceAngle(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double angle)
@@ -416,89 +254,83 @@ void MD_RenderSurface(SDL_Surface* src, SDL_Rect* srcrect, int x, int y)
     MD_RenderSurfaceEx(src, srcrect, x, y, 1.0, 1.0, 0.0);
 }
 
-struct DrawSDLSurfaceData
-{
-    SDL_Surface* src;
-    int x, y;
-};
-
-static void draw_sdl_line(uint32_t* pixels, int width, int y, void* data)
-{
-    struct DrawSDLSurfaceData* entry_data = (struct DrawSDLSurfaceData*)data;
-    SDL_Surface* surface = entry_data->src;
-
-    SDL_Rect srcrect = { 0, y, surface->w, 1 };
-    SDL_Rect dstrect = { entry_data->x, entry_data->y + y, surface->w, 1 };
-    SDL_BlitSurface(surface, &srcrect, target, &dstrect);
-}
-
-void MD_RenderSDLSurface(SDL_Surface* src, int x, int y)
-{
-    RenderQueue_Entry* entry = MD_RenderQueueNextEntry();
-    if (entry == NULL)
-        return;
-
-    entry->draw_line = draw_sdl_line;
-    entry->destructor = draw_empty_destructor;
-    entry->start_line = y;
-    entry->end_line = y + src->h;
-
-    struct DrawSDLSurfaceData* data = (struct DrawSDLSurfaceData*)entry->data;
-    data->src = src;
-    data->x = x;
-    data->y = y;
-}
-
 void MD_RenderSurfaceDeform(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize)
 {
+    Uint8* pixels = src->pixels;
+    Uint8* fbpixels = framebuffer->pixels;
 
-}
+    /* Find the intersection of the source surface and the framebuffer */
+    int xstart = SDL_max(xleft, 0);
+    int xend = SDL_min((xleft + src->w), framebuffer->w);
+    int ystart = SDL_max(ytop, 0);
+    int yend = SDL_min((ytop + src->h), framebuffer->h);
 
-struct DrawDeform2Data
-{
-    SDL_Surface* src;
-    int xleft, ytop;
-    int* hdeform;
-    int deformsize;
-};
+    /* If the surface is offset above the framebuffer, skip that many rows. */
+    if (ytop < 0)
+        pixels += src->pitch * -ytop;
+    /* Set the initial framebuffer pointer to the top edge of the intersection. */
+    fbpixels += framebuffer->pitch * ystart;
 
-static void draw_deform2_line(uint32_t* pixels, int width, int y, void* data)
-{
-    struct DrawDeform2Data* entry_data = (struct DrawDeform2Data*)data;
-    int x = entry_data->xleft + entry_data->hdeform[y % entry_data->deformsize];
-    int startx, endx, offset;
-    if (!get_line_bounds(x, entry_data->src->w, width, &startx, &endx, &offset))
-        return;
-
-    uint8_t* srcpixels = (uint8_t*)entry_data->src->pixels + y * entry_data->src->pitch;
-    uint32_t* colors = (uint32_t*)MD_GetColorPalette()->colors;
-    for (int x = startx; x < endx; x++)
+    /* For each row in the intersection: */
+    for (int i = ystart; i < yend; i++)
     {
-        uint8_t srccolor = srcpixels[x - startx + offset];
-        uint32_t color = colors[srccolor];
-        if (srccolor)
-            pixels[x] = interpolate_color(pixels[x], color, 1.0f);
+        /* Calculate the deformation amount for this row */
+        int y = i - ytop;
+        int deform = y < deformsize ? hdeform[y] : 0;
+
+        /* For each pixel in the intersection, copy it over if it's nonzero. */
+        for (int j = xstart; j < xend; j++)
+        {
+            Uint8 pixel = pixels[MD_UtilsOffset(j - xleft, src->w, deform)];
+            if (pixel)
+                fbpixels[j] = pixel;
+        }
+        /* Advance to the next row in both source and framebuffer. */
+        pixels += src->pitch;
+        fbpixels += framebuffer->pitch;
     }
 }
 
 // TODO: comment the difference between this function and MD_RenderSurfaceDeform
 void MD_RenderSurfaceDeform2(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize)
 {
-    RenderQueue_Entry* entry = MD_RenderQueueNextEntry();
-    if (entry == NULL)
-        return;
+    Uint8* pixels = src->pixels;
+    Uint8* fbpixels = framebuffer->pixels;
 
-    entry->draw_line = draw_deform2_line;
-    entry->destructor = draw_empty_destructor;
-    entry->start_line = ytop;
-    entry->end_line = ytop + src->h;
+    // Offset destination pointer to the first row to write to
+    fbpixels += framebuffer->pitch * ytop;
 
-    struct DrawDeform2Data* data = (struct DrawDeform2Data*)entry->data;
-    data->src = src;
-    data->xleft = xleft;
-    data->ytop = ytop;
-    data->hdeform = hdeform;
-    data->deformsize = deformsize;
+    // Iterate over each row of the source surface
+    for (int y = 0; y < src->h; y++)
+    {
+        // If the current row is outside the framebuffer,
+        // break out of the loop
+        if (y + ytop >= framebuffer->h)
+            break;
+
+        // Get the horizontal deformation amount for this row
+        int deform = y < deformsize ? hdeform[y] : 0;
+
+        // Iterate over each column of the current row
+        for (int x = 0; x < src->w; x++)
+        {
+            // Calculate the destination index in the framebuffer
+            int dest = xleft + x + deform;
+
+            Uint8 pixel = pixels[x];
+
+            // If the destination index is outside the framebuffer or
+            // the pixel is transparent (% MD_PALETTE_COLORS == 0),
+            // skip this pixel
+            if (dest < 0 || dest >= framebuffer->w || pixel % MD_PALETTE_COLORS == 0)
+                continue;
+
+            fbpixels[dest] = pixel;
+        }
+
+        fbpixels += framebuffer->pitch;
+        pixels += src->pitch;
+    }
 }
 
 MD_Spritesheet* MD_CreateSpritesheet(int sprite_w, int sprite_h, SDL_Surface* spritesheet_surface, SDL_bool take_ownership)

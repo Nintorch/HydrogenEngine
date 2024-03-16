@@ -103,7 +103,7 @@ void MD_ConvertColor(Uint16 md_color, SDL_Color* out)
     out->a = 255;
 }
 
-void MD_LoadMDPaletteRWOut(SDL_RWops* rw, SDL_bool free_rwops, SDL_Color* out, int ncolors)
+void MD_LoadPaletteMDRWOut(SDL_RWops* rw, SDL_bool free_rwops, SDL_Color* out, int ncolors)
 {
     int rwcount = (SDL_RWsize(rw) - SDL_RWtell(rw)) / 2;
     int n = SDL_min(ncolors, rwcount);
@@ -118,11 +118,11 @@ void MD_LoadMDPaletteRWOut(SDL_RWops* rw, SDL_bool free_rwops, SDL_Color* out, i
         SDL_RWclose(rw);
 }
 
-void MD_LoadMDPaletteOut(const char* filename, int pal, SDL_Color* out, int ncolors)
+void MD_LoadPaletteMDOut(const char* filename, int pal, SDL_Color* out, int ncolors)
 {
     SDL_RWops* rw = SDL_RWFromFile(filename, "rb");
     SDL_RWseek(rw, pal * MD_PALETTE_COLORS * 2, RW_SEEK_SET);
-    MD_LoadMDPaletteRWOut(rw, SDL_TRUE, out, ncolors);
+    MD_LoadPaletteMDRWOut(rw, SDL_TRUE, out, ncolors);
 }
 
 void MD_LoadMDPaletteRW(SDL_Palette* pal, int palid, int npals, SDL_RWops* rw, SDL_bool free_rwops)
@@ -130,20 +130,20 @@ void MD_LoadMDPaletteRW(SDL_Palette* pal, int palid, int npals, SDL_RWops* rw, S
     SDL_Color colors[MD_PALETTE_COLORS];
     for (int i = 0; i < npals; i++)
     {
-        MD_LoadMDPaletteRWOut(rw, SDL_FALSE, colors, MD_PALETTE_COLORS);
+        MD_LoadPaletteMDRWOut(rw, SDL_FALSE, colors, MD_PALETTE_COLORS);
         MD_SetPaletteColors(pal, palid + i, colors, 0, MD_PALETTE_COLORS);
     }
     if (free_rwops)
         SDL_RWclose(rw);
 }
 
-void MD_LoadMDPalette(SDL_Palette* pal, int palid, int npals, const char* filename)
+void MD_LoadPaletteMD(SDL_Palette* pal, int palid, int npals, const char* filename)
 {
     SDL_Color colors[MD_PALETTE_COLORS];
     SDL_RWops* rw = SDL_RWFromFile(filename, "rb");
     for (int i = 0; i < npals; i++)
     {
-        MD_LoadMDPaletteRWOut(rw, SDL_FALSE, colors, MD_PALETTE_COLORS);
+        MD_LoadPaletteMDRWOut(rw, SDL_FALSE, colors, MD_PALETTE_COLORS);
         MD_SetPaletteColors(pal, palid + i, colors, 0, MD_PALETTE_COLORS);
     }
     SDL_RWclose(rw);
@@ -162,7 +162,7 @@ static SDL_Color get_color_from_surface(SDL_Surface* surface, int x, int y)
         pixel = SDL_MapRGB(surface->format, p[0], p[1], p[2]);
     }
     SDL_Color color;
-    SDL_GetRGB(pixel, surface->format, &color.r, &color.g, &color.b);
+    SDL_GetRGBA(pixel, surface->format, &color.r, &color.g, &color.b, &color.a);
     return color;
 }
 

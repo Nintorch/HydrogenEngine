@@ -11,6 +11,7 @@
 SDL_Palette* underwater;
 MD_Object* sonic;
 SDL_Surface* test;
+SDL_Surface* test2;
 
 void hblank(int y)
 {
@@ -26,11 +27,12 @@ void GameInit(void)
 {
     MD_SetHBlank(hblank);
 
-    MD_LoadPalette(NULL, 0, 1, "data/sonicpal.png");
+    // MD_LoadPalette(NULL, 0, 1, "data/sonicpal.png");
+    MD_LoadPaletteMD(NULL, 0, 1, "data/SonicPal.bin");
     MD_LoadPalette(NULL, 1, 1, "data/ghzpal.png");
 
     underwater = MD_CreateColorPalette();
-    MD_LoadMDPalette(underwater, 0, 1, "data/Sonic - LZ Underwater.bin");
+    MD_LoadPaletteMD(underwater, 0, 1, "data/Sonic - LZ Underwater.bin");
 
     SDL_Color buffer[MD_PALETTE_COLORS];
     MD_CopyPaletteOut(NULL, 1, buffer, MD_PALETTE_COLORS);
@@ -43,6 +45,7 @@ void GameInit(void)
     MD_SetPaletteColors(underwater, 1, buffer, 0, MD_PALETTE_COLORS);
 
     test = MD_LoadSurface("data/ghz.png", 1, 1);
+    test2 = IMG_Load("data/test.png");
     sonic = CreateSonicObject();
 
     for (int i = 0; i < 240; i++)
@@ -64,6 +67,8 @@ void GameFramebufferRender(SDL_Surface* framebuffer)
     }
     timer++;
     MD_RenderSurfaceDeform2(test, 0, 0, hdeform, 240);
+    MD_RenderSurfaceDeform2(test, 256, 0, hdeform, 240);
+    MD_RenderSDLSurface(test2, 50, 100);
     MD_ObjectSystemRender();
 }
 
@@ -74,6 +79,7 @@ void GameTextureRender(SDL_Surface* rgbframebuffer)
 
 void GameQuit(void)
 {
+    SDL_FreeSurface(test2);
     SDL_FreeSurface(test);
     SDL_FreePalette(underwater);
 }

@@ -82,7 +82,7 @@ void MD_Update(void)
         GameUpdate();
 
         // Software rendering
-        MD_FillSurface(MD_GetFramebuffer(), 0, 4);
+        MD_FillSurface(0, 4);
         GameFramebufferRender(MD_GetFramebuffer());
 
         // Hardware rendering

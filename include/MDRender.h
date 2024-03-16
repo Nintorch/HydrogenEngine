@@ -25,8 +25,6 @@ enum MD_SurfaceFlags
 
 SDL_Surface* MD_CreateSurface(int w, int h, int flags);
 Uint8* MD_GetSurfacePixels(SDL_Surface* surface);
-void MD_FillSurface(SDL_Surface* surface, int palid, int colorid);
-void MD_ClearSurface(SDL_Surface* surface);
 
 SDL_Surface* MD_ConvertSurface(SDL_Surface* surface, int palid_start, int palid_end);
 SDL_Surface* MD_LoadSurfaceRW(SDL_RWops* rw, SDL_bool free_rwops, int palid_start, int palid_end);
@@ -37,6 +35,7 @@ void MD_SaveSurface(SDL_Surface* surface, const char* filename);
 
 void MD_PreTextureRender(void);
 void MD_PostTextureRender(void);
+void MD_FlushRenderQueue(void);
 
 SDL_Surface* MD_GetFramebuffer(void);
 
@@ -46,9 +45,14 @@ void MD_UnlockFBTexture(void);
 void MD_RenderFBToSurface(SDL_Surface* surface);
 void MD_RenderFBTextureToScreen(void);
 
+void MD_FillSurface(int palid, int colorid);
+void MD_ClearSurface(void);
+
 void MD_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double zoomx, double zoomy, double angle);
 void MD_RenderSurfaceAngle(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double angle);
 void MD_RenderSurface(SDL_Surface* src, SDL_Rect* srcrect, int x, int y);
+
+void MD_RenderSDLSurface(SDL_Surface* src, int x, int y);
 
 void MD_RenderSurfaceDeform(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize);
 void MD_RenderSurfaceDeform2(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize);
