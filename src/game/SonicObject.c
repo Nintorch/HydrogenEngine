@@ -1,4 +1,4 @@
-#include "MD.h"
+#include "HydrogenEngine.h"
 #include "game/Objects.h"
 
 #include <math.h>
@@ -8,7 +8,7 @@ typedef struct
     Uint8 timer;
 } SonicUserData;
 
-static void SonicMain(MD_Object* object)
+static void SonicMain(HE_Object* object)
 {
     SonicUserData* userdata = (SonicUserData*)object->userdata;
 
@@ -21,24 +21,24 @@ static void SonicMain(MD_Object* object)
         userdata->timer = 0;
     }
 
-    object->xspeed = MD_GetInputHeld() & KEY_RIGHT ? 1.f : MD_GetInputHeld() & KEY_LEFT ? -1.f : 0;
-    object->yspeed = MD_GetInputHeld() & KEY_DOWN ? 1.f : MD_GetInputHeld() & KEY_UP ? -1.f : 0;
-    MD_SpeedToPos(object);
+    object->xspeed = HE_GetInputHeld() & KEY_RIGHT ? 1.f : HE_GetInputHeld() & KEY_LEFT ? -1.f : 0;
+    object->yspeed = HE_GetInputHeld() & KEY_DOWN ? 1.f : HE_GetInputHeld() & KEY_UP ? -1.f : 0;
+    HE_SpeedToPos(object);
 }
 
-static void SonicConstructor(MD_Object* object)
+static void SonicConstructor(HE_Object* object)
 {
     object->routine = SonicMain;
-    object->spritesheet = //MD_LoadSpritesheet(64, 64, "data/spritesheet.png", 0, 0);
-        MD_LoadSpritesheetMD(64, 64, "data/SonicArt.bin", "data/SonicMap.bin", "data/SonicDPLC.bin", 0);
+    object->spritesheet = //HE_LoadSpritesheet(64, 64, "data/spritesheet.png", 0, 0);
+        HE_LoadSpritesheetMD(64, 64, "data/SonicArt.bin", "data/SonicMap.bin", "data/SonicDPLC.bin", 0);
     object->spritesheet_owner = SDL_TRUE;
     object->frame = 6;
 
-    object->x = MD_GetFramebuffer()->w / 2;
-    object->y = MD_GetFramebuffer()->h / 2;
+    object->x = HE_GetFramebuffer()->w / 2;
+    object->y = HE_GetFramebuffer()->h / 2;
 }
 
-MD_Object* CreateSonicObject(void)
+HE_Object* CreateSonicObject(void)
 {
-    return MD_InitializeReservedObject(SonicConstructor);
+    return HE_InitializeReservedObject(SonicConstructor);
 }

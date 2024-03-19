@@ -1,8 +1,8 @@
 #ifndef __OBJECTS_H__
 #define __OBJECTS_H__
 
-#include "MDObject.h"
+#include "HE_Object.h"
 
-MD_Object* CreateSonicObject(void);
+HE_Object* CreateSonicObject(void);
 
 #endif // __OBJECTS_H__

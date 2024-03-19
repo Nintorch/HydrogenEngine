@@ -1,15 +1,15 @@
-#include "MD.h"
+#include "HydrogenEngine.h"
 
 typedef struct
 {
-    Uint8 md_key;
+    Uint8 HE_key;
     SDL_Scancode key;
-} MD_KeyMap;
+} HE_KeyMap;
 
-static MD_InputBitfield pressed = 0;
-static MD_InputBitfield held = 0;
+static HE_InputBitfield pressed = 0;
+static HE_InputBitfield held = 0;
 
-MD_KeyMap key_map[8] = {
+HE_KeyMap key_map[8] = {
     {KEY_UP, SDL_SCANCODE_UP},
     {KEY_DOWN, SDL_SCANCODE_DOWN},
     {KEY_LEFT, SDL_SCANCODE_LEFT},
@@ -20,34 +20,34 @@ MD_KeyMap key_map[8] = {
     {KEY_START, SDL_SCANCODE_RETURN}
 };
 
-void MD_InputSystemInit(void)
+void HE_InputSystemInit(void)
 {
 
 }
 
-void MD_InputSystemUpdate(void)
+void HE_InputSystemUpdate(void)
 {
     pressed = 0;
 }
 
-void MD_InputSystemQuit(void)
+void HE_InputSystemQuit(void)
 {
 
 }
 
 static int find_key(SDL_Scancode key)
 {
-    MD_KeyMap* entry = key_map;
+    HE_KeyMap* entry = key_map;
     for (int i = 0; i < 8; i++)
     {
         if (entry->key == key)
-            return entry->md_key;
+            return entry->HE_key;
         entry++;
     }
     return 0;
 }
 
-void MD_InputHandleEvent(SDL_Event* event)
+void HE_InputHandleEvent(SDL_Event* event)
 {
     SDL_Scancode key;
     switch (event->type)
@@ -66,22 +66,22 @@ void MD_InputHandleEvent(SDL_Event* event)
     }
 }
 
-MD_InputBitfield MD_GetInputPressed(void)
+HE_InputBitfield HE_GetInputPressed(void)
 {
     return pressed;
 }
 
-MD_InputBitfield MD_GetInputHeld(void)
+HE_InputBitfield HE_GetInputHeld(void)
 {
     return held;
 }
 
-void MD_SetPressed(int keys)
+void HE_SetPressed(int keys)
 {
     pressed = keys;
 }
 
-void MD_SetHeld(int keys)
+void HE_SetHeld(int keys)
 {
     held = keys;
 }

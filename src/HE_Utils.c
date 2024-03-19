@@ -1,6 +1,6 @@
-#include "MDUtils.h"
+#include "HE_Utils.h"
 
-int MD_UtilsOffset(int x, int size, int offset)
+int HE_UtilsOffset(int x, int size, int offset)
 {
     x += offset;
     x %= size;

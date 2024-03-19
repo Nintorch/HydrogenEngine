@@ -1,4 +1,4 @@
-#include "MD.h"
+#include "HydrogenEngine.h"
 #include "SDL.h"
 #include "SDL_image.h"
 
@@ -7,104 +7,104 @@ static SDL_Window* wnd;
 static float fb_zoom_factor = 1.0f;
 static SDL_bool running = SDL_TRUE;
 
-SDL_Window* MD_GetWindow(void)
+SDL_Window* HE_GetWindow(void)
 {
     return wnd;
 }
 
-void MD_UpdateFBZoom(void)
+void HE_UpdateFBZoom(void)
 {
     int w, h;
     SDL_GetWindowSize(wnd, &w, &h);
-    float zoomx = 1.0f * w / MD_GetFramebuffer()->w,
-        zoomy = 1.0f * h / MD_GetFramebuffer()->h;
+    float zoomx = 1.0f * w / HE_GetFramebuffer()->w,
+        zoomy = 1.0f * h / HE_GetFramebuffer()->h;
     fb_zoom_factor = SDL_min(zoomx, zoomy);
 }
 
-float MD_GetFBZoom(void)
+float HE_GetFBZoom(void)
 {
     return fb_zoom_factor;
 }
 
-void MD_Close(void)
+void HE_Close(void)
 {
     running = SDL_FALSE;
 }
 
-void MD_Init(void)
+void HE_Init(void)
 {
     SDL_Init(SDL_INIT_EVERYTHING);
     IMG_Init(IMG_INIT_PNG);
-    wnd = SDL_CreateWindow(MD_WINDOW_TITLE,
+    wnd = SDL_CreateWindow(HE_WINDOW_TITLE,
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        MD_WINDOW_WIDTH, MD_WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE);
+        HE_WINDOW_WIDTH, HE_WINDOW_HEIGHT, SDL_WINDOW_RESIZABLE);
 
-    MD_InputSystemInit();
-    MD_PaletteInit();
-    MD_RenderInit();
-    MD_ObjectSystemInit();
+    HE_InputSystemInit();
+    HE_PaletteInit();
+    HE_RenderInit();
+    HE_ObjectSystemInit();
 
-    MD_UpdateFBZoom();
+    HE_UpdateFBZoom();
 
     GameInit();
 }
 
-void MD_Update(void)
+void HE_Update(void)
 {
     SDL_Event event;
 
     while (running)
     {
-        MD_InputSystemUpdate();
+        HE_InputSystemUpdate();
         while (SDL_PollEvent(&event))
         {
             switch (event.type)
             {
                 case SDL_QUIT:
-                    MD_Close();
+                    HE_Close();
                     break;
 
                 case SDL_WINDOWEVENT:
                     switch (event.window.event)
                     {
                         case SDL_WINDOWEVENT_RESIZED:
-                            MD_UpdateFBZoom();
+                            HE_UpdateFBZoom();
                             break;
                     }
                     break;
             }
 
-            MD_InputHandleEvent(&event);
+            HE_InputHandleEvent(&event);
         }
 
         // Update
-        MD_ResetCurrentColorPalette();
+        HE_ResetCurrentColorPalette();
         GameUpdate();
 
         // Software rendering
-        MD_FillSurface(0, 0);
+        HE_FillSurface(0, 0);
         GameRender();
 
         // Hardware rendering
-        MD_PreTextureRender();
+        HE_PreTextureRender();
 
-        SDL_Surface* fb_surface = MD_LockFBTexture();
-        SDL_BlitSurface(MD_GetFramebuffer(), NULL, fb_surface, NULL);
-        MD_UnlockFBTexture();
-        MD_RenderFBTextureToScreen();
+        SDL_Surface* fb_surface = HE_LockFBTexture();
+        SDL_BlitSurface(HE_GetFramebuffer(), NULL, fb_surface, NULL);
+        HE_UnlockFBTexture();
+        HE_RenderFBTextureToScreen();
 
-        MD_PostTextureRender();
+        HE_PostTextureRender();
     }
 }
 
-void MD_Quit(void)
+void HE_Quit(void)
 {
     GameQuit();
 
-    MD_ObjectSystemQuit();
-    MD_RenderQuit();
-    MD_PaletteQuit();
-    MD_InputSystemQuit();
+    HE_ObjectSystemQuit();
+    HE_RenderQuit();
+    HE_PaletteQuit();
+    HE_InputSystemQuit();
 
     SDL_DestroyWindow(wnd);
     IMG_Quit();

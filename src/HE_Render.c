@@ -1,5 +1,5 @@
-#include "MD.h"
-#include "MDUtils.h"
+#include "HydrogenEngine.h"
+#include "HE_Utils.h"
 #include "SDL_image.h"
 
 #include <stdio.h>
@@ -10,21 +10,21 @@ static SDL_Texture* fb_texture;
 
 static SDL_Surface* target;
 
-static MD_HInterrupt hblank;
+static HE_HInterrupt hblank;
 
-void MD_RenderInit(void)
+void HE_RenderInit(void)
 {
-    hwrender = SDL_CreateRenderer(MD_GetWindow(), -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    hwrender = SDL_CreateRenderer(HE_GetWindow(), -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
-    target = framebuffer = SDL_CreateRGBSurfaceWithFormat(0, MD_FB_WIDTH, MD_FB_HEIGHT, 32, MD_FB_FORMAT);
+    target = framebuffer = SDL_CreateRGBSurfaceWithFormat(0, HE_FB_WIDTH, HE_FB_HEIGHT, 32, HE_FB_FORMAT);
     fb_texture = SDL_CreateTexture(hwrender,
         SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING,
-        MD_FB_WIDTH, MD_FB_HEIGHT);
+        HE_FB_WIDTH, HE_FB_HEIGHT);
 
-    MD_ResetHBlank();
+    HE_ResetHBlank();
 }
 
-void MD_RenderQuit(void)
+void HE_RenderQuit(void)
 {
     SDL_FreeSurface(framebuffer);
     SDL_DestroyTexture(fb_texture);
@@ -33,20 +33,20 @@ void MD_RenderQuit(void)
 
 static void setup_surface(SDL_Surface* surface, int flags)
 {
-    SDL_SetSurfacePalette(surface, MD_GetDefaultColorPalette());
-    if (flags & MD_SURFACEFLAG_TRANSPARENT)
+    SDL_SetSurfacePalette(surface, HE_GetDefaultColorPalette());
+    if (flags & HE_SURFACEFLAG_TRANSPARENT)
         SDL_SetColorKey(surface, SDL_TRUE, 0);
-    MD_SetSurfaceFlags(surface, flags);
+    HE_SetSurfaceFlags(surface, flags);
 }
 
-SDL_Surface* MD_CreateSurface(int w, int h, int flags)
+SDL_Surface* HE_CreateSurface(int w, int h, int flags)
 {
     SDL_Surface* surface = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h, 8, 0, 0, 0, 0);
     setup_surface(surface, flags);
     return surface;
 }
 
-Uint8* MD_GetSurfacePixels(SDL_Surface* surface)
+Uint8* HE_GetSurfacePixels(SDL_Surface* surface)
 {
     return (Uint8*)surface->pixels;
 }
@@ -63,14 +63,14 @@ static int find_color(const SDL_Color* color, int palid_start, int palid_end)
     if (color->a == 0)
         return 0;
 
-    SDL_Color* palette = MD_GetColorPalette()->colors;
-    int color_start = MD_MapColorInternal(palid_start, 0) + 1;
-    int color_end = MD_MapColorInternal(palid_end, MD_PALETTE_COLORS - 1);
+    SDL_Color* palette = HE_GetColorPalette()->colors;
+    int color_start = HE_MapColorInternal(palid_start, 0) + 1;
+    int color_end = HE_MapColorInternal(palid_end, HE_PALETTE_COLORS - 1);
 
     for (int i = color_start; i <= color_end; i++)
     {
         // Skip the transparent colors
-        if ((i % MD_PALETTE_COLORS) == 0)
+        if ((i % HE_PALETTE_COLORS) == 0)
             continue;
         if (colors_equal(palette + i, color))
             return i;
@@ -79,7 +79,7 @@ static int find_color(const SDL_Color* color, int palid_start, int palid_end)
     return 0;
 }
 
-SDL_Surface* MD_ConvertSurface(SDL_Surface* surface, int palid_start, int palid_end)
+SDL_Surface* HE_ConvertSurface(SDL_Surface* surface, int palid_start, int palid_end)
 {
     if (surface->format->BytesPerPixel != 4)
     {
@@ -88,9 +88,9 @@ SDL_Surface* MD_ConvertSurface(SDL_Surface* surface, int palid_start, int palid_
         return NULL;
     }
 
-    SDL_Surface* mdsurface = MD_CreateSurface(surface->w, surface->h, MD_SURFACEFLAG_TRANSPARENT);
+    SDL_Surface* mdsurface = HE_CreateSurface(surface->w, surface->h, HE_SURFACEFLAG_TRANSPARENT);
     Uint8* pixels = surface->pixels;
-    Uint8* mdpixels = MD_GetSurfacePixels(mdsurface);
+    Uint8* mdpixels = HE_GetSurfacePixels(mdsurface);
     SDL_PixelFormat* pixel_format = surface->format;
     int BytesPerPixel = surface->format->BytesPerPixel;
 
@@ -109,20 +109,20 @@ SDL_Surface* MD_ConvertSurface(SDL_Surface* surface, int palid_start, int palid_
     return mdsurface;
 }
 
-SDL_Surface* MD_LoadSurfaceRW(SDL_RWops* rw, SDL_bool free_rwops, int palid_start, int palid_end)
+SDL_Surface* HE_LoadSurfaceRW(SDL_RWops* rw, SDL_bool free_rwops, int palid_start, int palid_end)
 {
     SDL_Surface* rgb = IMG_Load_RW(rw, free_rwops);
-    SDL_Surface* result = MD_ConvertSurface(rgb, palid_start, palid_end);
+    SDL_Surface* result = HE_ConvertSurface(rgb, palid_start, palid_end);
     SDL_FreeSurface(rgb);
     return result;
 }
 
-SDL_Surface* MD_LoadSurface(const char* filename, int palid_start, int palid_end)
+SDL_Surface* HE_LoadSurface(const char* filename, int palid_start, int palid_end)
 {
-    return MD_LoadSurfaceRW(SDL_RWFromFile(filename, "rb"), SDL_TRUE, palid_start, palid_end);
+    return HE_LoadSurfaceRW(SDL_RWFromFile(filename, "rb"), SDL_TRUE, palid_start, palid_end);
 }
 
-void MD_SaveSurface(SDL_Surface* surface, const char* filename)
+void HE_SaveSurface(SDL_Surface* surface, const char* filename)
 {
     const char* filename_test = filename + strlen(filename) - 4;
     if (strlen(filename) < 5)
@@ -135,41 +135,41 @@ void MD_SaveSurface(SDL_Surface* surface, const char* filename)
 
 // Rendering
 
-void MD_PreTextureRender(void)
+void HE_PreTextureRender(void)
 {
-    MD_FlushRenderQueue();
+    HE_FlushRenderQueue();
     SDL_SetRenderDrawColor(hwrender, 0, 0, 0, 255);
     SDL_RenderClear(hwrender);
 }
 
-void MD_PostTextureRender(void)
+void HE_PostTextureRender(void)
 {
     SDL_RenderPresent(hwrender);
 }
 
-SDL_Surface* MD_GetFramebuffer(void)
+SDL_Surface* HE_GetFramebuffer(void)
 {
     return framebuffer;
 }
 
-SDL_Surface* MD_LockFBTexture(void)
+SDL_Surface* HE_LockFBTexture(void)
 {
     SDL_Surface* fb_surface;
     SDL_LockTextureToSurface(fb_texture, NULL, &fb_surface);
     return fb_surface;
 }
 
-void MD_UnlockFBTexture(void)
+void HE_UnlockFBTexture(void)
 {
     SDL_UnlockTexture(fb_texture);
 }
 
-void MD_RenderFBTextureToScreen()
+void HE_RenderFBTextureToScreen()
 {
     int w, h;
-    SDL_GetWindowSize(MD_GetWindow(), &w, &h);
+    SDL_GetWindowSize(HE_GetWindow(), &w, &h);
 
-    float fb_zoom_factor = MD_GetFBZoom();
+    float fb_zoom_factor = HE_GetFBZoom();
     SDL_Rect rect = {
         w / 2 - framebuffer->w * fb_zoom_factor / 2,
         h / 2 - framebuffer->h * fb_zoom_factor / 2,
@@ -198,16 +198,16 @@ static int render_queue_pos = 0;
 static RenderQueue_Entry* RenderQueueNextEntry(void)
 {
     if (render_queue_pos >= RENDER_QUEUE_SIZE)
-        MD_FlushRenderQueue();
+        HE_FlushRenderQueue();
     
     int offset = render_queue_pos++;
     return render_queue + offset;
 }
 
-void MD_FlushRenderQueue(void)
+void HE_FlushRenderQueue(void)
 {
     uint32_t* pixels = (uint32_t*)target->pixels;
-    MD_SetColorPalette(NULL);
+    HE_SetColorPalette(NULL);
     for (int y = 0; y < target->h; y++)
     {
         hblank(y);
@@ -230,9 +230,9 @@ void MD_FlushRenderQueue(void)
     render_queue_pos = 0;
 }
 
-void MD_SetRenderTarget(SDL_Surface* surface)
+void HE_SetRenderTarget(SDL_Surface* surface)
 {
-    MD_FlushRenderQueue();
+    HE_FlushRenderQueue();
     target = surface != NULL ? surface : framebuffer;
 }
 
@@ -244,12 +244,12 @@ struct FillSurfaceData
 static void draw_fill_line(uint32_t* pixels, int width, int y, void* data)
 {
     struct FillSurfaceData* entry_data = (struct FillSurfaceData*)data;
-    uint32_t color = *(uint32_t*)(MD_GetColorPalette()->colors + entry_data->colorid);
+    uint32_t color = *(uint32_t*)(HE_GetColorPalette()->colors + entry_data->colorid);
     for (int i = 0; i < width; i++)
         *pixels++ = color;
 }
 
-void MD_FillSurface(int palid, int colorid)
+void HE_FillSurface(int palid, int colorid)
 {
     RenderQueue_Entry* entry = RenderQueueNextEntry();
     if (entry == NULL)
@@ -260,12 +260,12 @@ void MD_FillSurface(int palid, int colorid)
     entry->end_line = target->h;
 
     struct FillSurfaceData* data = (struct FillSurfaceData*)entry->data;
-    data->colorid = MD_MapColorInternal(palid, colorid);
+    data->colorid = HE_MapColorInternal(palid, colorid);
 }
 
-void MD_ClearSurface(void)
+void HE_ClearSurface(void)
 {
-    MD_FillSurface(0, 0);
+    HE_FillSurface(0, 0);
 }
 
 #define GET_RED(a) (int)((a) & 0xff)
@@ -323,7 +323,7 @@ static void draw_sprite_line(uint32_t* pixels, int width, int y, void* data)
     if (!get_line_bounds(entry_data->x, surface->w, width, &startx, &endx, &offsetx))
         return;
 
-    uint32_t* colors = (uint32_t*)MD_GetColorPalette()->colors;
+    uint32_t* colors = (uint32_t*)HE_GetColorPalette()->colors;
     uint8_t* srcpixels = (uint8_t*)surface->pixels + y * surface->pitch;
     float opacity_float = entry_data->opacity / 255.0f;
     for (int x = startx; x < endx; x++)
@@ -342,27 +342,27 @@ static void draw_sprite_destructor(void* data)
         SDL_FreeSurface(entry_data->mdsurface);
 }
 
-void MD_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double zoomx, double zoomy, double angle, double opacity)
+void HE_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double zoomx, double zoomy, double angle, double opacity)
 {
     RenderQueue_Entry* entry = RenderQueueNextEntry();
     if (entry == NULL)
         return;
 
-    int flags = MD_GetSurfaceFlags(src);
+    int flags = HE_GetSurfaceFlags(src);
     SDL_Surface* surface_to_free = NULL;
     SDL_bool surface_owner = SDL_FALSE;
 
     SDL_Surface* surface = src;
     if (srcrect)
     {
-        surface = MD_ClipSurface(src, srcrect);
+        surface = HE_ClipSurface(src, srcrect);
         surface_to_free = surface;
         surface_owner = SDL_TRUE;
     }
 
-    if (MD_NeedScaleRotate(zoomx, zoomy, angle))
+    if (HE_NeedScaleRotate(zoomx, zoomy, angle))
     {
-        surface = MD_ScaleRotateSurface(surface, zoomx, zoomy, angle);
+        surface = HE_ScaleRotateSurface(surface, zoomx, zoomy, angle);
         setup_surface(surface, flags);
         SDL_FreeSurface(surface_to_free);
         surface_owner = SDL_TRUE;
@@ -383,14 +383,14 @@ void MD_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, doubl
     entry->end_line = rect.y + rect.h;
 }
 
-void MD_RenderSurfaceAngle(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double angle)
+void HE_RenderSurfaceAngle(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double angle)
 {
-    MD_RenderSurfaceEx(src, srcrect, x, y, 1.0, 1.0, angle, 1.0);
+    HE_RenderSurfaceEx(src, srcrect, x, y, 1.0, 1.0, angle, 1.0);
 }
 
-void MD_RenderSurface(SDL_Surface* src, SDL_Rect* srcrect, int x, int y)
+void HE_RenderSurface(SDL_Surface* src, SDL_Rect* srcrect, int x, int y)
 {
-    MD_RenderSurfaceEx(src, srcrect, x, y, 1.0, 1.0, 0.0, 1.0);
+    HE_RenderSurfaceEx(src, srcrect, x, y, 1.0, 1.0, 0.0, 1.0);
 }
 
 struct DrawSDLSurfaceData
@@ -409,11 +409,11 @@ static void draw_sdl_line(uint32_t* pixels, int width, int y, void* data)
     SDL_BlitSurface(surface, &srcrect, target, &dstrect);
 }
 
-void MD_RenderSDLSurface(SDL_Surface* src, int xleft, int ytop)
+void HE_RenderSDLSurface(SDL_Surface* src, int xleft, int ytop)
 {
-    if (src->format->format != MD_FB_FORMAT)
+    if (src->format->format != HE_FB_FORMAT)
     {
-        printf("MD_RenderSDLSurface: unsupported format\n");
+        printf("HE_RenderSDLSurface: unsupported format\n");
         return;
     }
 
@@ -448,7 +448,7 @@ static void draw_deform_line(uint32_t* pixels, int width, int y, void* data)
         return;
 
     uint8_t* srcpixels = (uint8_t*)entry_data->src->pixels + y * entry_data->src->pitch;
-    uint32_t* colors = (uint32_t*)MD_GetColorPalette()->colors;
+    uint32_t* colors = (uint32_t*)HE_GetColorPalette()->colors;
     for (int x = startx; x < endx; x++)
     {
         uint8_t srccolor = srcpixels[x - startx + offset];
@@ -458,9 +458,9 @@ static void draw_deform_line(uint32_t* pixels, int width, int y, void* data)
     }
 }
 
-// TODO: comment the difference between this function and MD_RenderSurfaceDeform
-// TODO: make wrap_deform function like the other MD_RenderSurfaceDeform
-void MD_RenderSurfaceDeform(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize, SDL_bool wrap_deform)
+// TODO: comment the difference between this function and HE_RenderSurfaceDeform
+// TODO: make wrap_deform function like the other HE_RenderSurfaceDeform
+void HE_RenderSurfaceDeform(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize, SDL_bool wrap_deform)
 {
     RenderQueue_Entry* entry = RenderQueueNextEntry();
     if (entry == NULL)
@@ -478,9 +478,9 @@ void MD_RenderSurfaceDeform(SDL_Surface* src, int xleft, int ytop, int* hdeform,
     data->deformsize = deformsize;
 }
 
-MD_Spritesheet* MD_CreateSpritesheet(int sprite_w, int sprite_h, SDL_Surface* spritesheet_surface, SDL_bool take_ownership)
+HE_Spritesheet* HE_CreateSpritesheet(int sprite_w, int sprite_h, SDL_Surface* spritesheet_surface, SDL_bool take_ownership)
 {
-    MD_Spritesheet* spritesheet = (MD_Spritesheet*)malloc(sizeof(*spritesheet));
+    HE_Spritesheet* spritesheet = (HE_Spritesheet*)malloc(sizeof(*spritesheet));
 
     spritesheet->surface = spritesheet_surface;
     spritesheet->surface_ownership = take_ownership;
@@ -494,23 +494,23 @@ MD_Spritesheet* MD_CreateSpritesheet(int sprite_w, int sprite_h, SDL_Surface* sp
     return spritesheet;
 }
 
-void MD_FreeSpritesheet(MD_Spritesheet* spritesheet)
+void HE_FreeSpritesheet(HE_Spritesheet* spritesheet)
 {
     if (spritesheet->surface_ownership)
         SDL_FreeSurface(spritesheet->surface);
     free(spritesheet);
 }
 
-MD_Spritesheet* MD_LoadSpritesheetMD_RW(int sprite_w, int sprite_h,
+HE_Spritesheet* HE_LoadSpritesheetHE_RW(int sprite_w, int sprite_h,
     SDL_RWops* tiles, SDL_RWops* mappings, SDL_RWops* dplc, int palid)
 {
-    int sprite_count = MD_GetSpriteMappingsCount(mappings);
+    int sprite_count = HE_GetSpriteMappingsCount(mappings);
     int sprites_h = 10;
     int sprites_v = sprite_count / sprites_h + 1;
 
-    SDL_Surface* spritesheet_surface = MD_CreateSurface(
+    SDL_Surface* spritesheet_surface = HE_CreateSurface(
         sprite_w * sprites_h, sprite_h * sprites_v,
-        MD_SURFACEFLAG_TRANSPARENT);
+        HE_SURFACEFLAG_TRANSPARENT);
 
     int sprite = 0;
     for (int i = 0; i < sprites_v; i++)
@@ -519,24 +519,24 @@ MD_Spritesheet* MD_LoadSpritesheetMD_RW(int sprite_w, int sprite_h,
         {
             if (sprite >= sprite_count)
                 break;
-            MD_DrawSpriteMappings(tiles, mappings, dplc, sprite, palid,
+            HE_DrawSpriteMappings(tiles, mappings, dplc, sprite, palid,
                 sprite_w * j + (sprite_w / 2), sprite_h * i + (sprite_h / 2), spritesheet_surface);
             sprite++;
         }
     }
 
-    MD_Spritesheet* spritesheet = MD_CreateSpritesheet(sprite_w, sprite_h, spritesheet_surface, SDL_TRUE);
+    HE_Spritesheet* spritesheet = HE_CreateSpritesheet(sprite_w, sprite_h, spritesheet_surface, SDL_TRUE);
     return spritesheet;
 }
 
-MD_Spritesheet* MD_LoadSpritesheetMD(int sprite_w, int sprite_h,
+HE_Spritesheet* HE_LoadSpritesheetMD(int sprite_w, int sprite_h,
     const char* tiles_file, const char* mappings_file, const char* dplc_file, int palid)
 {
     SDL_RWops* tiles = SDL_RWFromFile(tiles_file, "rb");
     SDL_RWops* mappings = SDL_RWFromFile(mappings_file, "rb");
     SDL_RWops* dplc = SDL_RWFromFile(dplc_file, "rb");
 
-    MD_Spritesheet* spritesheet = MD_LoadSpritesheetMD_RW(sprite_w, sprite_h,
+    HE_Spritesheet* spritesheet = HE_LoadSpritesheetHE_RW(sprite_w, sprite_h,
         tiles, mappings, dplc, palid);
 
     SDL_RWclose(tiles);
@@ -546,17 +546,17 @@ MD_Spritesheet* MD_LoadSpritesheetMD(int sprite_w, int sprite_h,
     return spritesheet;
 }
 
-MD_Spritesheet* MD_LoadSpritesheet(int sprite_w, int sprite_h, const char* filename, int palid_start, int palid_end)
+HE_Spritesheet* HE_LoadSpritesheet(int sprite_w, int sprite_h, const char* filename, int palid_start, int palid_end)
 {
-    return MD_CreateSpritesheet(sprite_w, sprite_h, MD_LoadSurface(filename, palid_start, palid_end), SDL_TRUE);
+    return HE_CreateSpritesheet(sprite_w, sprite_h, HE_LoadSurface(filename, palid_start, palid_end), SDL_TRUE);
 }
 
-void MD_SaveSpritesheet(MD_Spritesheet* spritesheet, const char* filename)
+void HE_SaveSpritesheet(HE_Spritesheet* spritesheet, const char* filename)
 {
-    MD_SaveSurface(spritesheet->surface, filename);
+    HE_SaveSurface(spritesheet->surface, filename);
 }
 
-SDL_Rect MD_GetSpriteRect(MD_Spritesheet* spritesheet, int sprite)
+SDL_Rect HE_GetSpriteRect(HE_Spritesheet* spritesheet, int sprite)
 {
     int sprite_h = sprite % spritesheet->sprites_h;
     int sprite_v = sprite / spritesheet->sprites_h;
@@ -571,31 +571,31 @@ SDL_Rect MD_GetSpriteRect(MD_Spritesheet* spritesheet, int sprite)
     return out;
 }
 
-void MD_RenderSpritesheetEx(MD_Spritesheet* spritesheet, int sprite, int x, int y, double zoomx, double zoomy, double angle, double opacity)
+void HE_RenderSpritesheetEx(HE_Spritesheet* spritesheet, int sprite, int x, int y, double zoomx, double zoomy, double angle, double opacity)
 {
-    SDL_Rect rect = MD_GetSpriteRect(spritesheet, sprite);
-    MD_RenderSurfaceEx(spritesheet->surface, &rect, x, y, zoomx, zoomy, angle, opacity);
+    SDL_Rect rect = HE_GetSpriteRect(spritesheet, sprite);
+    HE_RenderSurfaceEx(spritesheet->surface, &rect, x, y, zoomx, zoomy, angle, opacity);
 }
 
-void MD_RenderSpritesheetAngle(MD_Spritesheet* spritesheet, int sprite, int x, int y, double angle)
+void HE_RenderSpritesheetAngle(HE_Spritesheet* spritesheet, int sprite, int x, int y, double angle)
 {
-    MD_RenderSpritesheetEx(spritesheet, sprite, x, y, 1.0, 1.0, angle, 1.0f);
+    HE_RenderSpritesheetEx(spritesheet, sprite, x, y, 1.0, 1.0, angle, 1.0f);
 }
 
-void MD_RenderSpritesheet(MD_Spritesheet* spritesheet, int sprite, int x, int y)
+void HE_RenderSpritesheet(HE_Spritesheet* spritesheet, int sprite, int x, int y)
 {
-    MD_RenderSpritesheetEx(spritesheet, sprite, x, y, 1.0, 1.0, 0.0, 1.0f);
+    HE_RenderSpritesheetEx(spritesheet, sprite, x, y, 1.0, 1.0, 0.0, 1.0f);
 }
 
 static void default_hblank(int y) {}
 
-void MD_SetHBlank(MD_HInterrupt h_int)
+void HE_SetHBlank(HE_HInterrupt h_int)
 {
     hblank = h_int;
 }
-void MD_ResetHBlank(void)
+void HE_ResetHBlank(void)
 {
-    MD_SetHBlank(default_hblank);
+    HE_SetHBlank(default_hblank);
 }
 
 // Mega Drive tile rendering
@@ -607,8 +607,8 @@ static void draw_tile_hline(SDL_RWops* tiles, Uint8* pixels, int palid, int xlef
         for (int j = 0; j < 8 / 2; j++)
         {
             Uint8 byte = SDL_ReadU8(tiles);
-            pixels[xleft + j * 2] = MD_MapColor(palid, (byte & 0xF0) / 0x10);
-            pixels[xleft + j * 2 + 1] = MD_MapColor(palid, byte & 0xF);
+            pixels[xleft + j * 2] = HE_MapColor(palid, (byte & 0xF0) / 0x10);
+            pixels[xleft + j * 2 + 1] = HE_MapColor(palid, byte & 0xF);
         }
     }
     else
@@ -616,23 +616,23 @@ static void draw_tile_hline(SDL_RWops* tiles, Uint8* pixels, int palid, int xlef
         for (int j = 8 / 2 - 1; j >= 0; j--)
         {
             Uint8 byte = SDL_ReadU8(tiles);
-            pixels[xleft + j * 2 + 1] = MD_MapColor(palid, (byte & 0xF0) / 0x10);
-            pixels[xleft + j * 2] = MD_MapColor(palid, byte & 0xF);
+            pixels[xleft + j * 2 + 1] = HE_MapColor(palid, (byte & 0xF0) / 0x10);
+            pixels[xleft + j * 2] = HE_MapColor(palid, byte & 0xF);
         }
     }
 }
 
-void MD_DrawTile(SDL_RWops* tiles, int tileid, int palid, int flags, SDL_Surface* dst, int xleft, int ytop)
+void HE_DrawTile(SDL_RWops* tiles, int tileid, int palid, int flags, SDL_Surface* dst, int xleft, int ytop)
 {
-    Uint8* pixels = MD_GetSurfacePixels(dst);
+    Uint8* pixels = HE_GetSurfacePixels(dst);
     pixels += dst->pitch * ytop;
 
     SDL_RWseek(tiles, tileid * 0x20, RW_SEEK_SET);
-    if ((flags & MD_TILE_YFLIP) == 0)
+    if ((flags & HE_TILE_YFLIP) == 0)
     {
         for (int i = 0; i < 8; i++)
         {
-            draw_tile_hline(tiles, pixels, palid, xleft, flags & MD_TILE_XFLIP);
+            draw_tile_hline(tiles, pixels, palid, xleft, flags & HE_TILE_XFLIP);
             pixels += dst->pitch;
         }
     }
@@ -641,7 +641,7 @@ void MD_DrawTile(SDL_RWops* tiles, int tileid, int palid, int flags, SDL_Surface
         pixels += dst->pitch * 7;
         for (int i = 7; i >= 0; i--)
         {
-            draw_tile_hline(tiles, pixels, palid, xleft, flags & MD_TILE_XFLIP);
+            draw_tile_hline(tiles, pixels, palid, xleft, flags & HE_TILE_XFLIP);
             pixels -= dst->pitch;
         }
     }
@@ -652,11 +652,11 @@ static void draw_mappings_vline(SDL_RWops* tiles,
     int tilesh, int pal, int map_flags, int xleft, int tilex, int ytop, int tile,
     SDL_Surface* dst)
 {
-    if ((map_flags & MD_TILE_YFLIP) == 0)
+    if ((map_flags & HE_TILE_YFLIP) == 0)
     {
         for (int h = 0; h < tilesh; h++)
         {
-            MD_DrawTile(tiles, tile, pal, map_flags, dst, xleft + tilex * 8, ytop + h * 8);
+            HE_DrawTile(tiles, tile, pal, map_flags, dst, xleft + tilex * 8, ytop + h * 8);
             tile++;
         }
     }
@@ -664,14 +664,14 @@ static void draw_mappings_vline(SDL_RWops* tiles,
     {
         for (int h = tilesh - 1; h >= 0; h--)
         {
-            MD_DrawTile(tiles, tile, pal, map_flags, dst, xleft + tilex * 8, ytop + h * 8);
+            HE_DrawTile(tiles, tile, pal, map_flags, dst, xleft + tilex * 8, ytop + h * 8);
             tile++;
         }
     }
 }
 
 // TODO: comments
-void MD_DrawSpriteMappings(
+void HE_DrawSpriteMappings(
     SDL_RWops* tiles, SDL_RWops* map, SDL_RWops* dplc,
     int spriteid, int palid,
     int xoffset, int yoffset,
@@ -718,7 +718,7 @@ void MD_DrawSpriteMappings(
             tile = dplc_tile;
         }
 
-        if ((map_flags & MD_TILE_XFLIP) == 0)
+        if ((map_flags & HE_TILE_XFLIP) == 0)
         {
             for (int j = 0; j < tilesw; j++)
             {
@@ -737,7 +737,7 @@ void MD_DrawSpriteMappings(
     }
 }
 
-int MD_GetSpriteMappingsCount(SDL_RWops* map)
+int HE_GetSpriteMappingsCount(SDL_RWops* map)
 {
     SDL_RWseek(map, 0, RW_SEEK_SET);
     return SDL_ReadBE16(map) / 2;
