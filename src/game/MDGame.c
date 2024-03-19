@@ -10,8 +10,7 @@
 
 SDL_Palette* underwater;
 MD_Object* sonic;
-SDL_Surface* test;
-SDL_Surface* test2;
+SDL_Surface *test, *test2;
 
 void hblank(int y)
 {
@@ -59,22 +58,17 @@ void GameUpdate(void)
     MD_ObjectSystemUpdate();
 }
 
-void GameFramebufferRender(SDL_Surface* framebuffer)
+void GameRender(void)
 {
     for (int i = 0; i < 240; i++)
     {
         hdeform[i] = i < 140 ? 0 : hdeform0[MD_UtilsOffset(i, 240, timer / 4)];
     }
     timer++;
-    MD_RenderSurfaceDeform2(test, 0, 0, hdeform, 240);
-    MD_RenderSurfaceDeform2(test, 256, 0, hdeform, 240);
+    MD_RenderSurfaceDeform(test, 0, 0, hdeform, 240, SDL_FALSE);
+    MD_RenderSurfaceDeform(test, 256, 0, hdeform, 240, SDL_FALSE);
     MD_RenderSDLSurface(test2, 50, 100);
     MD_ObjectSystemRender();
-}
-
-void GameTextureRender(SDL_Surface* rgbframebuffer)
-{
-
 }
 
 void GameQuit(void)

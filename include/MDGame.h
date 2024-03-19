@@ -5,8 +5,7 @@
 
 void GameInit(void);
 void GameUpdate(void);
-void GameFramebufferRender(SDL_Surface* framebuffer);
-void GameTextureRender(SDL_Surface* rgbframebuffer);
+void GameRender(void);
 void GameQuit(void);
 
 #endif // __MDGAME_H__

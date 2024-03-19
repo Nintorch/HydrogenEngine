@@ -16,11 +16,10 @@ void MD_RenderInit(void)
 {
     hwrender = SDL_CreateRenderer(MD_GetWindow(), -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
-    target = framebuffer = SDL_CreateRGBSurfaceWithFormat(0, MD_FB_WIDTH, MD_FB_HEIGHT, 32, SDL_PIXELFORMAT_ABGR8888);
+    target = framebuffer = SDL_CreateRGBSurfaceWithFormat(0, MD_FB_WIDTH, MD_FB_HEIGHT, 32, MD_FB_FORMAT);
     fb_texture = SDL_CreateTexture(hwrender,
         SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING,
         MD_FB_WIDTH, MD_FB_HEIGHT);
-    SDL_FillRect(framebuffer, NULL, SDL_MapRGB(framebuffer->format, 250, 0, 0));
 
     MD_ResetHBlank();
 }
@@ -165,34 +164,6 @@ void MD_UnlockFBTexture(void)
     SDL_UnlockTexture(fb_texture);
 }
 
-void MD_RenderFBToSurface(SDL_Surface* surface)
-{
-    // if (surface->format->format != SDL_PIXELFORMAT_ABGR8888)
-    // {
-    //     // TODO
-    //     printf("MD_RenderFBToSurface: Invalid format\n");
-    //     return;
-    // }
-
-    // Uint32* pixels = surface->pixels;
-    // Uint8* fb_pixels = framebuffer->pixels;
-    // for (int i = 0; i < framebuffer->h; i++)
-    // {
-    //     hblank(i);
-    //     Uint32* colors = (Uint32*)MD_GetColorPalette()->colors;
-    //     for (int j = 0; j < framebuffer->w; j++)
-    //     {
-    //         Uint8 colorid = fb_pixels[j];
-    //         Uint32 color = colors[colorid];
-    //         pixels[j] = color;
-    //     }
-    //     pixels += surface->pitch / 4;
-    //     fb_pixels += framebuffer->pitch;
-    // }
-
-    SDL_BlitSurface(framebuffer, NULL, surface, NULL);
-}
-
 void MD_RenderFBTextureToScreen()
 {
     int w, h;
@@ -224,13 +195,11 @@ static struct RenderQueue_Entry
 
 static int render_queue_pos = 0;
 
-static RenderQueue_Entry* MD_RenderQueueNextEntry(void)
+static RenderQueue_Entry* RenderQueueNextEntry(void)
 {
     if (render_queue_pos >= RENDER_QUEUE_SIZE)
-    {
         MD_FlushRenderQueue();
-        printf("Overflow\n");
-    }
+    
     int offset = render_queue_pos++;
     return render_queue + offset;
 }
@@ -239,7 +208,7 @@ void MD_FlushRenderQueue(void)
 {
     uint32_t* pixels = (uint32_t*)target->pixels;
     MD_SetColorPalette(NULL);
-    for (int y = 0; y < MD_FB_HEIGHT; y++)
+    for (int y = 0; y < target->h; y++)
     {
         hblank(y);
         for (int i = 0; i < render_queue_pos; i++)
@@ -255,12 +224,17 @@ void MD_FlushRenderQueue(void)
     for (int i = 0; i < render_queue_pos; i++)
     {
         RenderQueue_Entry* entry = render_queue + i;
-        entry->destructor(entry->data);
+        if (entry->destructor)
+            entry->destructor(entry->data);
     }
     render_queue_pos = 0;
 }
 
-static void draw_empty_destructor(void* data) {}
+void MD_SetRenderTarget(SDL_Surface* surface)
+{
+    MD_FlushRenderQueue();
+    target = surface != NULL ? surface : framebuffer;
+}
 
 struct FillSurfaceData
 {
@@ -277,12 +251,11 @@ static void draw_fill_line(uint32_t* pixels, int width, int y, void* data)
 
 void MD_FillSurface(int palid, int colorid)
 {
-    RenderQueue_Entry* entry = MD_RenderQueueNextEntry();
+    RenderQueue_Entry* entry = RenderQueueNextEntry();
     if (entry == NULL)
         return;
 
     entry->draw_line = draw_fill_line;
-    entry->destructor = draw_empty_destructor;
     entry->start_line = 0;
     entry->end_line = target->h;
 
@@ -371,7 +344,7 @@ static void draw_sprite_destructor(void* data)
 
 void MD_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, double zoomx, double zoomy, double angle, double opacity)
 {
-    RenderQueue_Entry* entry = MD_RenderQueueNextEntry();
+    RenderQueue_Entry* entry = RenderQueueNextEntry();
     if (entry == NULL)
         return;
 
@@ -396,7 +369,6 @@ void MD_RenderSurfaceEx(SDL_Surface* src, SDL_Rect* srcrect, int x, int y, doubl
     }
 
     SDL_Rect rect = { x - surface->w / 2, y - surface->h / 2, surface->w, surface->h };
-    // SDL_BlitSurface(surface, NULL, framebuffer, &rect);
 
     struct DrawSpriteData* data = (struct DrawSpriteData*)entry->data;
     data->mdsurface = surface;
@@ -437,29 +409,29 @@ static void draw_sdl_line(uint32_t* pixels, int width, int y, void* data)
     SDL_BlitSurface(surface, &srcrect, target, &dstrect);
 }
 
-void MD_RenderSDLSurface(SDL_Surface* src, int x, int y)
+void MD_RenderSDLSurface(SDL_Surface* src, int xleft, int ytop)
 {
-    RenderQueue_Entry* entry = MD_RenderQueueNextEntry();
+    if (src->format->format != MD_FB_FORMAT)
+    {
+        printf("MD_RenderSDLSurface: unsupported format\n");
+        return;
+    }
+
+    RenderQueue_Entry* entry = RenderQueueNextEntry();
     if (entry == NULL)
         return;
 
     entry->draw_line = draw_sdl_line;
-    entry->destructor = draw_empty_destructor;
-    entry->start_line = y;
-    entry->end_line = y + src->h;
+    entry->start_line = ytop;
+    entry->end_line = ytop + src->h;
 
     struct DrawSDLSurfaceData* data = (struct DrawSDLSurfaceData*)entry->data;
     data->src = src;
-    data->x = x;
-    data->y = y;
+    data->x = xleft;
+    data->y = ytop;
 }
 
-void MD_RenderSurfaceDeform(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize)
-{
-
-}
-
-struct DrawDeform2Data
+struct DrawDeformData
 {
     SDL_Surface* src;
     int xleft, ytop;
@@ -467,10 +439,10 @@ struct DrawDeform2Data
     int deformsize;
 };
 
-static void draw_deform2_line(uint32_t* pixels, int width, int y, void* data)
+static void draw_deform_line(uint32_t* pixels, int width, int y, void* data)
 {
-    struct DrawDeform2Data* entry_data = (struct DrawDeform2Data*)data;
-    int x = entry_data->xleft + entry_data->hdeform[y % entry_data->deformsize];
+    struct DrawDeformData* entry_data = (struct DrawDeformData*)data;
+    int x = entry_data->xleft + (entry_data->hdeform == NULL ? 0 : entry_data->hdeform[y % entry_data->deformsize]);
     int startx, endx, offset;
     if (!get_line_bounds(x, entry_data->src->w, width, &startx, &endx, &offset))
         return;
@@ -487,18 +459,18 @@ static void draw_deform2_line(uint32_t* pixels, int width, int y, void* data)
 }
 
 // TODO: comment the difference between this function and MD_RenderSurfaceDeform
-void MD_RenderSurfaceDeform2(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize)
+// TODO: make wrap_deform function like the other MD_RenderSurfaceDeform
+void MD_RenderSurfaceDeform(SDL_Surface* src, int xleft, int ytop, int* hdeform, int deformsize, SDL_bool wrap_deform)
 {
-    RenderQueue_Entry* entry = MD_RenderQueueNextEntry();
+    RenderQueue_Entry* entry = RenderQueueNextEntry();
     if (entry == NULL)
         return;
 
-    entry->draw_line = draw_deform2_line;
-    entry->destructor = draw_empty_destructor;
+    entry->draw_line = draw_deform_line;
     entry->start_line = ytop;
     entry->end_line = ytop + src->h;
 
-    struct DrawDeform2Data* data = (struct DrawDeform2Data*)entry->data;
+    struct DrawDeformData* data = (struct DrawDeformData*)entry->data;
     data->src = src;
     data->xleft = xleft;
     data->ytop = ytop;

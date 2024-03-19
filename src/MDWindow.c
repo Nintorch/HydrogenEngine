@@ -82,15 +82,14 @@ void MD_Update(void)
         GameUpdate();
 
         // Software rendering
-        MD_FillSurface(0, 4);
-        GameFramebufferRender(MD_GetFramebuffer());
+        MD_FillSurface(0, 0);
+        GameRender();
 
         // Hardware rendering
         MD_PreTextureRender();
 
         SDL_Surface* fb_surface = MD_LockFBTexture();
-        MD_RenderFBToSurface(fb_surface);
-        GameTextureRender(fb_surface);
+        SDL_BlitSurface(MD_GetFramebuffer(), NULL, fb_surface, NULL);
         MD_UnlockFBTexture();
         MD_RenderFBTextureToScreen();
 
