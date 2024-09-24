@@ -46,11 +46,6 @@ SDL_Surface* HE_CreateSurface(int w, int h, int flags)
     return surface;
 }
 
-Uint8* HE_GetSurfacePixels(SDL_Surface* surface)
-{
-    return (Uint8*)surface->pixels;
-}
-
 static SDL_bool colors_equal(const SDL_Color* a, const SDL_Color* b)
 {
     return a->r == b->r
@@ -90,7 +85,7 @@ SDL_Surface* HE_ConvertSurface(SDL_Surface* surface, int palid_start, int palid_
 
     SDL_Surface* mdsurface = HE_CreateSurface(surface->w, surface->h, HE_SURFACEFLAG_TRANSPARENT);
     Uint8* pixels = surface->pixels;
-    Uint8* mdpixels = HE_GetSurfacePixels(mdsurface);
+    Uint8* mdpixels = (Uint8*)mdsurface->pixels;
     SDL_PixelFormat* pixel_format = surface->format;
     int BytesPerPixel = surface->format->BytesPerPixel;
 
@@ -624,7 +619,7 @@ static void draw_tile_hline(SDL_RWops* tiles, Uint8* pixels, int palid, int xlef
 
 void HE_DrawTile(SDL_RWops* tiles, int tileid, int palid, int flags, SDL_Surface* dst, int xleft, int ytop)
 {
-    Uint8* pixels = HE_GetSurfacePixels(dst);
+    Uint8* pixels = (Uint8*)dst->pixels;
     pixels += dst->pitch * ytop;
 
     SDL_RWseek(tiles, tileid * 0x20, RW_SEEK_SET);

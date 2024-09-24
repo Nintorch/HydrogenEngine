@@ -20,7 +20,6 @@ enum HE_SurfaceFlags
 #define HE_SetSurfaceFlags(surface, flags) HE_GetSurfaceFlags(surface) = flags
 
 SDL_Surface* HE_CreateSurface(int w, int h, int flags);
-Uint8* HE_GetSurfacePixels(SDL_Surface* surface);
 
 SDL_Surface* HE_ConvertSurface(SDL_Surface* surface, int palid_start, int palid_end);
 SDL_Surface* HE_LoadSurfaceRW(SDL_RWops* rw, SDL_bool free_rwops, int palid_start, int palid_end);

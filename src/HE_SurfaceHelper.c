@@ -30,8 +30,8 @@ SDL_Surface* HE_ScaleSurface(SDL_Surface* surface, double zoomx, double zoomy)
         (int)(surface->w * SDL_fabs(zoomx)), (int)(surface->h * SDL_fabs(zoomy)),
         HE_GetSurfaceFlags(surface));
 
-    Uint8* pixels = HE_GetSurfacePixels(result);
-    Uint8* ogpixels = HE_GetSurfacePixels(surface);
+    Uint8* pixels = (Uint8*)result->pixels;
+    Uint8* ogpixels = (Uint8*)surface->pixels;
     /*
      * Scale the surface horizontally by zoomx,
      * and scale the surface vertically by zoomy.
@@ -78,7 +78,7 @@ SDL_Surface* HE_ScaleSurface(SDL_Surface* surface, double zoomx, double zoomy)
          */
         int idx = (int)(i / zoomy);
         if (idx < 0) idx += surface->h;
-        ogpixels = HE_GetSurfacePixels(surface) + surface->pitch * idx;
+        ogpixels = (Uint8*)surface->pixels + surface->pitch * idx;
     }
     return result;
 }
